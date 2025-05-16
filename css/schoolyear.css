@@ -1,0 +1,157 @@
+/* General Styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    background-color: #b3e0f2;
+}
+
+/* Sidebar Styles */
+.sidebar {
+    width: 220px; /* Fixed size para di magbago */
+    background-color: #002b5b;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 20px;
+    height: 100vh;
+    position: fixed;
+    overflow-y: auto; /* Para mag-scroll pag madami ang menu */
+}
+
+/* Logo */
+.sidebar img {
+    width: 100px; 
+    height: auto;
+    border-radius: 50%;
+}
+
+/* Sidebar Headers */
+.sidebar h2, .sidebar h3 {
+    font-size: 14px;
+    text-align: center;
+    padding: 5px;
+}
+
+/* Sidebar Menu */
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+    width: 100%;
+}
+
+.sidebar ul li {
+    width: 100%;
+    padding: 10px;
+    text-align: left;
+    transition: background 0.3s;
+}
+
+/* Menu Text & Icons */
+.sidebar ul li a {
+    text-decoration: none;
+    color: white;
+    font-size: 14px; 
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 15px;
+}
+
+.sidebar ul li:hover, .sidebar ul li.active {
+    background-color: #004080;
+}
+
+/* Top Bar */
+.top-bar {
+    position: fixed;
+    top: 0;
+    left: 220px;
+    width: calc(100% - 220px);
+    background-color: white;
+    padding: 15px 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #002b5b;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Exit Button */
+.exit-icon img {
+    width: 35px;
+    height: 35px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    margin-right: 20px;
+}
+
+.exit-icon img:hover {
+    transform: scale(1.1);
+}
+
+
+/* Main Content */
+.main-content {
+    margin-left: 220px;
+    margin-top: 60px;
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: calc(100vh - 60px);
+    text-align: center;
+}
+
+.main-content h3 {
+    font-size: 24px;
+    color: #002b5b;
+    font-weight: bold;
+}
+
+.main-content p {
+    font-size: 18px;
+    color: #333;
+}
+
+
+/* Top Bar */
+.top-bar {
+    position: fixed;
+    top: 0;
+    left: 220px;
+    width: calc(100% - 220px);
+    background-color: white;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #002b5b;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Exit Button */
+.exit-icon img {
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    margin-right: 20px;
+}
+
+.exit-icon img:hover {
+    transform: scale(1.1);
+}
+
+/* Dashboard Container */
+.dashboard-container {
+    margin-left: 220px;
+    margin-top: 60px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+

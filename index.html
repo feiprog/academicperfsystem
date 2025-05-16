@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login & Registration</title>
+    <link rel="stylesheet" href="css/index.css">
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <img src="images/logo.png" alt="GCST Logo">
+            <h2>GRANBY COLLEGES OF SCIENCE AND TECHNOLOGY</h2>
+        </div>
+
+        <div class="main">
+            <!-- Login Form -->
+            <div id="login-page" class="page">
+                <h1 class="title-login">WELCOME TO GCST</h1>
+                <h2 class="subtitle-login">Academic Performance Monitoring System</h2>
+                <div class="form-box">
+                    <h3>LOGIN:</h3>
+                    <input type="text" placeholder="Username" id="login-username">
+                    
+                    <div class="password-container">
+                        <input type="password" placeholder="Password" id="login-password">
+                        <span class="toggle-password" data-target="login-password">👁️</span>
+                    </div>
+
+                    <button id="login-btn">Log in</button>
+                    <p>Don't have an account? <a href="#" id="register-link">Register</a></p>
+                </div>
+            </div>
+
+            <!-- Registration Form -->
+            <div id="register-page" class="page hidden">
+                <h1 class="title-registration">CREATE ACCOUNT</h1>
+                <div class="form-box">
+                    <h3>REGISTRATION:</h3>
+                    <select name="user_type" id="user-type">
+                        <option value="" disabled selected>Register as</option>
+                        <option value="teacher">Teacher</option>
+                        <option value="student">Student</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                    <input type="text" placeholder="Full Name" id="register-name">
+                    <input type="text" placeholder="Username" id="register-username">
+                    <input type="email" placeholder="Email" id="register-email">
+                    
+                    <div class="password-container">
+                        <input type="password" placeholder="Password" id="register-password">
+                        <span class="toggle-password" data-target="register-password">👁️</span>
+                    </div>
+
+                    <div class="password-container">
+                        <input type="password" placeholder="Confirm Password" id="register-confirm-password">
+                        <span class="toggle-password" data-target="register-confirm-password">👁️</span>
+                    </div>
+
+                    <button id="register-btn">Register</button>
+                    <p>Already have an account? <a href="#" id="login-link">Log in</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
