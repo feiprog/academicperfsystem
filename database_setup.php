@@ -9,7 +9,9 @@ $sql_users = "CREATE TABLE IF NOT EXISTS users (
     role ENUM('student', 'teacher') NOT NULL,
     full_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_role (role),
+    INDEX idx_username (username)
 )";
 
 // Create students table
@@ -21,9 +23,11 @@ $sql_students = "CREATE TABLE IF NOT EXISTS students (
     last_name VARCHAR(50) NOT NULL,
     year_level VARCHAR(20) NOT NULL,
     degree_program VARCHAR(50) NOT NULL,
-    semester ENUM('1st Sem', '2nd Sem', 'Summer') NOT NULL,
+    semester ENUM('1st Sem', '2nd Sem') NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_student_id (student_id),
+    INDEX idx_year_program (year_level, degree_program)
 )";
 
 // Create teachers table
@@ -33,7 +37,8 @@ $sql_teachers = "CREATE TABLE IF NOT EXISTS teachers (
     teacher_id VARCHAR(20) UNIQUE NOT NULL,
     department VARCHAR(50) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_teacher_id (teacher_id)
 )";
 
 // Create subjects table with teacher assignments
@@ -44,7 +49,9 @@ $sql_subjects = "CREATE TABLE IF NOT EXISTS subjects (
     description TEXT,
     teacher_id INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE SET NULL
+    FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE SET NULL,
+    INDEX idx_subject_code (subject_code),
+    INDEX idx_teacher (teacher_id)
 )";
 
 // Create student_subjects table for enrollment
@@ -57,7 +64,9 @@ $sql_student_subjects = "CREATE TABLE IF NOT EXISTS student_subjects (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
     FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_enrollment (student_id, subject_id)
+    UNIQUE KEY unique_enrollment (student_id, subject_id),
+    INDEX idx_status (status),
+    INDEX idx_enrollment_date (enrollment_date)
 )";
 
 // Create grades table
@@ -66,13 +75,15 @@ $sql_grades = "CREATE TABLE IF NOT EXISTS grades (
     student_id INT NOT NULL,
     subject_id INT NOT NULL,
     score DECIMAL(5,2) NOT NULL,
-    grade_type ENUM('quiz', 'assignment', 'exam', 'project', 'final') NOT NULL,
+    grade_type ENUM('quiz', 'assignment', 'exam', 'project', 'final', 'attendance', 'activity_completion') NOT NULL,
     remarks TEXT,
     graded_by INT NOT NULL,
     graded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
     FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
-    FOREIGN KEY (graded_by) REFERENCES teachers(id) ON DELETE CASCADE
+    FOREIGN KEY (graded_by) REFERENCES teachers(id) ON DELETE CASCADE,
+    INDEX idx_grade_type (grade_type),
+    INDEX idx_graded_at (graded_at)
 )";
 
 // Create attendance table
@@ -88,7 +99,9 @@ $sql_attendance = "CREATE TABLE IF NOT EXISTS attendance (
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
     FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
     FOREIGN KEY (recorded_by) REFERENCES teachers(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_attendance (student_id, subject_id, date)
+    UNIQUE KEY unique_attendance (student_id, subject_id, date),
+    INDEX idx_date (date),
+    INDEX idx_status (status)
 )";
 
 // Create activities table
@@ -104,7 +117,9 @@ $sql_activities = "CREATE TABLE IF NOT EXISTS activities (
     created_by INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
-    FOREIGN KEY (created_by) REFERENCES teachers(id) ON DELETE CASCADE
+    FOREIGN KEY (created_by) REFERENCES teachers(id) ON DELETE CASCADE,
+    INDEX idx_scheduled_date (scheduled_date),
+    INDEX idx_status (status)
 )";
 
 // Create reports table
@@ -121,7 +136,9 @@ $sql_reports = "CREATE TABLE IF NOT EXISTS reports (
     comments TEXT,
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
     FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
-    FOREIGN KEY (reviewed_by) REFERENCES teachers(id) ON DELETE SET NULL
+    FOREIGN KEY (reviewed_by) REFERENCES teachers(id) ON DELETE SET NULL,
+    INDEX idx_status (status),
+    INDEX idx_submission_date (submission_date)
 )";
 
 // Create report requests table
@@ -140,7 +157,9 @@ $sql_report_requests = "CREATE TABLE IF NOT EXISTS report_requests (
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
     FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
     FOREIGN KEY (response_by) REFERENCES teachers(id) ON DELETE SET NULL,
-    FOREIGN KEY (report_id) REFERENCES reports(id) ON DELETE SET NULL
+    FOREIGN KEY (report_id) REFERENCES reports(id) ON DELETE SET NULL,
+    INDEX idx_status (status),
+    INDEX idx_request_date (request_date)
 )";
 
 // Create curriculum table
@@ -149,10 +168,36 @@ $sql_curriculum = "CREATE TABLE IF NOT EXISTS curriculum (
     degree_program VARCHAR(50) NOT NULL,
     year_level VARCHAR(20) NOT NULL,
     subject_id INT NOT NULL,
-    semester ENUM('1st Sem', '2nd Sem', 'Summer') NOT NULL,
+    semester ENUM('1st Sem', '2nd Sem') NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_curriculum (degree_program, year_level, subject_id, semester)
+    UNIQUE KEY unique_curriculum (degree_program, year_level, subject_id, semester),
+    INDEX idx_program_year (degree_program, year_level)
+)";
+
+// Create remember_tokens table
+$sql_remember_tokens = "CREATE TABLE IF NOT EXISTS remember_tokens (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    token VARCHAR(64) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_token (token),
+    INDEX idx_expires (expires_at)
+)";
+
+// Create password_resets table
+$sql_password_resets = "CREATE TABLE IF NOT EXISTS password_resets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    token VARCHAR(64) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    used TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_token (token),
+    INDEX idx_expires (expires_at)
 )";
 
 // Insert default subjects with teacher assignments
@@ -190,7 +235,7 @@ SELECT 'BSIT', '4th Year', id, '1st Sem' FROM subjects WHERE subject_code IN ('P
 UNION ALL
 SELECT 'BSIT', '4th Year', id, '2nd Sem' FROM subjects WHERE subject_code IN ('WSD101', 'UIUX101', 'MOB201', 'DSA201')
 
--- BSCS Program (similar structure but with some variations)
+-- BSCS Program
 UNION ALL
 SELECT 'BSCS', '1st Year', id, '1st Sem' FROM subjects WHERE subject_code IN ('PROG101', 'IM101', 'WSD101', 'UIUX101')
 UNION ALL
@@ -208,7 +253,7 @@ SELECT 'BSCS', '4th Year', id, '1st Sem' FROM subjects WHERE subject_code IN ('P
 UNION ALL
 SELECT 'BSCS', '4th Year', id, '2nd Sem' FROM subjects WHERE subject_code IN ('WSD101', 'UIUX101', 'MOB201', 'DSA201')
 
--- BSCE Program (similar structure but with some variations)
+-- BSCE Program
 UNION ALL
 SELECT 'BSCE', '1st Year', id, '1st Sem' FROM subjects WHERE subject_code IN ('PROG101', 'IM101', 'WSD101', 'UIUX101')
 UNION ALL
@@ -260,6 +305,8 @@ try {
     $conn->query($sql_reports);
     $conn->query($sql_report_requests);
     $conn->query($sql_curriculum);
+    $conn->query($sql_remember_tokens);
+    $conn->query($sql_password_resets);
     
     // Insert default subjects
     $conn->query($sql_insert_subjects);

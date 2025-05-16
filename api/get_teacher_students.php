@@ -14,14 +14,14 @@ try {
             s.student_id,
             CONCAT(s.first_name, ' ', s.last_name) as name,
             sub.subject_name,
-            COALESCE(AVG(g.score), 0) as average_score,
-            COALESCE(AVG(a.status = 'present') * 100, 0) as attendance,
+            COALESCE(AVG(CASE WHEN g.grade_type = 'final' THEN g.score END), 0) as average_score,
+            COALESCE(AVG(CASE WHEN g.grade_type = 'attendance' THEN g.score END), 0) as attendance,
+            COALESCE(AVG(CASE WHEN g.grade_type = 'activity_completion' THEN g.score END), 0) as activity_completion,
             MAX(r.submission_date) as last_report
         FROM students s
         JOIN student_subjects ss ON s.id = ss.student_id
         JOIN subjects sub ON ss.subject_id = sub.id
         LEFT JOIN grades g ON s.id = g.student_id AND sub.id = g.subject_id
-        LEFT JOIN attendance a ON s.id = a.student_id AND sub.id = a.subject_id
         LEFT JOIN reports r ON s.id = r.student_id AND sub.id = r.subject_id
         WHERE sub.teacher_id = ?
         GROUP BY s.id, s.student_id, s.first_name, s.last_name, sub.subject_name
@@ -41,6 +41,7 @@ try {
             'subject_name' => $row['subject_name'],
             'average_score' => round($row['average_score'], 1),
             'attendance' => round($row['attendance'], 1),
+            'activity_completion' => round($row['activity_completion'], 1),
             'last_report' => $row['last_report'] ? date('Y-m-d', strtotime($row['last_report'])) : null
         ];
     }

@@ -315,6 +315,26 @@ $subjects = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             console.log('Viewing details for grade:', gradeId);
             // Add your view details logic here
         }
+
+        function showAddGradeModal() {
+            // Implementation for showing add grade modal
+        }
+
+        function showEditGradeModal() {
+            // Implementation for showing edit grade modal
+        }
+
+        function showDeleteGradeModal() {
+            // Implementation for showing delete grade modal
+        }
+
+        function exportGrades() {
+            // Implementation for exporting grades
+        }
+
+        function printGrades() {
+            // Implementation for printing grades
+        }
     </script>
 </body>
 </html> 

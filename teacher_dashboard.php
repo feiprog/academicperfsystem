@@ -196,7 +196,6 @@
                                 <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Average Score</th>
                                 <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Attendance</th>
                                 <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Status</th>
-                                <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="studentTableBody" class="divide-y divide-gray-100">
@@ -208,9 +207,9 @@
         </div>
 
         <!-- Response Modal -->
-        <div id="responseModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
-            <div class="bg-white rounded-2xl p-8 max-w-2xl w-full mx-4">
-                <div class="flex justify-between items-center mb-6">
+        <div id="responseModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center overflow-y-auto">
+            <div class="bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 my-8 max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-6 sticky top-0 bg-white pb-4 border-b">
                     <h3 class="text-xl font-semibold text-gray-800">Respond to Report Request</h3>
                     <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -227,14 +226,51 @@
                                   required
                                   class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 min-h-[100px]"></textarea>
                     </div>
-                    <div id="reportContentGroup" class="hidden">
-                        <label for="reportContent" class="block text-sm font-medium text-gray-700 mb-2">Report Content:</label>
-                        <textarea id="reportContent" 
-                                  name="report_content" 
-                                  required
-                                  class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 min-h-[150px]"></textarea>
+                    <div id="reportContentGroup" class="hidden space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Performance Summary:</label>
+                            <textarea id="performanceSummary" name="performance_summary" required class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Current Grade:</label>
+                            <input type="text" id="currentGrade" name="current_grade" required class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500" />
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Attendance (%):</label>
+                            <input type="number" id="attendance" name="attendance" min="0" max="100" step="0.1" required class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500" />
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Activity Completion (%):</label>
+                            <input type="number" id="activityCompletion" name="activity_completion" min="0" max="100" step="0.1" required class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500" />
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Strengths:</label>
+                            <textarea id="strengths" name="strengths" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Areas for Improvement:</label>
+                            <textarea id="improvement" name="improvement" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Recommendations:</label>
+                            <textarea id="recommendations" name="recommendations" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Additional Comments:</label>
+                            <textarea id="additionalComments" name="additional_comments" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></textarea>
+                        </div>
+
+                        <!-- Hidden field to store the combined report content -->
+                        <textarea id="reportContent" name="report_content" class="hidden"></textarea>
                     </div>
-                    <div class="flex justify-end space-x-4">
+                    <div class="flex justify-end space-x-4 sticky bottom-0 bg-white pt-4 border-t">
                         <button type="button" 
                                 onclick="handleResponse('approve')"
                                 class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
@@ -260,6 +296,13 @@
                 .then(data => {
                     document.getElementById('teacherName').textContent = data.full_name;
                     document.getElementById('teacherId').textContent = data.teacher_id;
+                    // Set the teacherSubjects span
+                    if (data.subjects && data.subjects.length > 0) {
+                        const subjectNames = data.subjects.map(s => s.subject_name).join(', ');
+                        document.getElementById('teacherSubjects').textContent = subjectNames;
+                    } else {
+                        document.getElementById('teacherSubjects').textContent = 'None';
+                    }
                     
                     // Update dashboard title with subject
                     if (data.subjects && data.subjects.length > 0) {
@@ -305,14 +348,14 @@
 
         // Update statistics based on student data
         function updateStatistics(students) {
-            const totalStudents = students.length;
-            const averageScore = students.reduce((acc, student) => 
-                acc + (student.average_score || 0), 0) / totalStudents || 0;
+            // Count unique students
+            const uniqueStudentIds = new Set(students.map(s => s.student_id));
+            const totalStudents = uniqueStudentIds.size;
+            const averageScore = students.reduce((acc, student) => acc + (student.average_score || 0), 0) / (students.length || 1);
             const pendingReports = students.filter(s => !s.last_report).length;
 
             document.getElementById('totalStudents').textContent = totalStudents;
-            document.getElementById('averagePerformance').textContent = 
-                `${averageScore.toFixed(1)}%`;
+            document.getElementById('averagePerformance').textContent = `${averageScore.toFixed(1)}%`;
             document.getElementById('pendingReports').textContent = pendingReports;
         }
 
@@ -349,13 +392,6 @@
             });
         });
 
-        // View student details
-        function viewStudent(studentId) {
-            // This will be replaced with actual implementation
-            console.log(`Viewing student: ${studentId}`);
-            window.location.href = `student_details.php?id=${studentId}`;
-        }
-
         // Edit grade
         function editGrade(studentId) {
             // This will be replaced with actual implementation
@@ -368,13 +404,12 @@
             fetch('api/get_pending_requests.php')
                 .then(response => response.json())
                 .then(requests => {
+                    console.log('DEBUG: Pending requests:', requests);
                     const tableBody = document.getElementById('pendingRequestsTable');
-                    
                     if (requests.length === 0) {
-                        tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No pending requests</td></tr>';
+                        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No pending requests</td></tr>';
                         return;
                     }
-
                     tableBody.innerHTML = requests.map(request => `
                         <tr>
                             <td>
@@ -384,16 +419,19 @@
                             <td>${request.subject_code} - ${request.subject_name}</td>
                             <td>${request.request_type.charAt(0).toUpperCase() + request.request_type.slice(1)}</td>
                             <td>${new Date(request.request_date).toLocaleDateString()}</td>
-                            <td>${request.request_reason}</td>
                             <td>
-                                <button onclick="showResponseModal(${request.request_id})" class="action-button">
+                                <button onclick="showResponseModal(${request.request_id})" class="action-button bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors">
                                     Respond
                                 </button>
                             </td>
                         </tr>
                     `).join('');
                 })
-                .catch(error => console.error('Error loading pending requests:', error));
+                .catch(error => {
+                    console.error('Error loading pending requests:', error);
+                    const tableBody = document.getElementById('pendingRequestsTable');
+                    tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: red;">Error loading pending requests. Check console for details.</td></tr>';
+                });
         }
 
         // Show response modal
@@ -402,7 +440,14 @@
             const reportContentGroup = document.getElementById('reportContentGroup');
             document.getElementById('requestId').value = requestId;
             document.getElementById('responseNotes').value = '';
-            document.getElementById('reportContent').value = '';
+            document.getElementById('performanceSummary').value = '';
+            document.getElementById('currentGrade').value = '';
+            document.getElementById('attendance').value = '';
+            document.getElementById('activityCompletion').value = '';
+            document.getElementById('strengths').value = '';
+            document.getElementById('improvement').value = '';
+            document.getElementById('recommendations').value = '';
+            document.getElementById('additionalComments').value = '';
             modal.classList.remove('hidden');
             modal.classList.add('flex');
         }
@@ -425,10 +470,26 @@
             const reportContent = document.getElementById('reportContent');
             if (action === 'approve') {
                 reportContentGroup.style.display = 'block';
-                reportContent.required = true;
+                // Get values and ensure they're numbers
+                const attendance = parseFloat(document.getElementById('attendance').value) || 0;
+                const activityCompletion = parseFloat(document.getElementById('activityCompletion').value) || 0;
+                
+                // Combine all fields into the report content
+                const reportContent =
+                    `Performance Summary: ${document.getElementById('performanceSummary').value}\n` +
+                    `Current Grade: ${document.getElementById('currentGrade').value}%\n` +
+                    `Attendance: ${attendance}%\n` +
+                    `Activity Completion: ${activityCompletion}%\n` +
+                    `Strengths: ${document.getElementById('strengths').value}\n` +
+                    `Areas for Improvement: ${document.getElementById('improvement').value}\n` +
+                    `Recommendations: ${document.getElementById('recommendations').value}\n` +
+                    `Additional Comments: ${document.getElementById('additionalComments').value}`;
+                document.getElementById('reportContent').value = reportContent;
+                formData.set('report_content', reportContent);
+                formData.set('attendance', attendance);
+                formData.set('activity_completion', activityCompletion);
             } else {
                 reportContentGroup.style.display = 'none';
-                reportContent.required = false;
             }
 
             if (!form.checkValidity()) {
@@ -472,34 +533,35 @@
 
         // Update student table row styling
         function createStudentRow(student) {
+            // Only show if there is a grade, attendance, or activity completion
+            if (!student.average_score && !student.attendance && !student.activity_completion) {
+                return '';
+            }
             const statusClass = getStatusClass(student.average_score);
             const statusText = getStatusText(student.average_score);
-            
             return `
                 <tr class="hover:bg-sky-50/50 transition-colors">
-                    <td class="px-6 py-4 text-sm text-gray-900">${student.student_id}</td>
-                    <td class="px-6 py-4 text-sm text-gray-900">${student.name}</td>
-                    <td class="px-6 py-4 text-sm text-gray-600">${student.subject_name}</td>
+                    <td class="px-6 py-4 text-sm text-gray-900">
+                        ${student.student_id}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-900">
+                        ${student.name}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600">
+                        ${student.subject_name}
+                    </td>
                     <td class="px-6 py-4 text-sm">
                         <span class="px-3 py-1.5 rounded-lg ${getGradeColorClass(student.average_score)}">
                             ${student.average_score || 'N/A'}%
                         </span>
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-600">${student.attendance || 'N/A'}%</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">
+                        ${student.attendance || 'N/A'}%
+                    </td>
                     <td class="px-6 py-4">
                         <span class="px-3 py-1.5 rounded-lg ${statusClass}">
                             ${statusText}
                         </span>
-                    </td>
-                    <td class="px-6 py-4 space-x-2">
-                        <button onclick="viewStudent('${student.id}')" 
-                                class="px-3 py-1.5 text-sm font-medium text-white bg-sky-600 rounded-lg hover:bg-sky-700 transition-colors">
-                            View
-                        </button>
-                        <button onclick="editGrade('${student.id}')" 
-                                class="px-3 py-1.5 text-sm font-medium text-white bg-sky-600 rounded-lg hover:bg-sky-700 transition-colors">
-                            Update
-                        </button>
                     </td>
                 </tr>
             `;

@@ -5,33 +5,35 @@ require_once '../db.php';
 header('Content-Type: application/json');
 
 try {
-    $teacher_id = $_SESSION['user_id'];
-    
-    // Get teacher information
+    $user_id = $_SESSION['user_id'];
+    // Get teacher info by joining users and teachers
     $stmt = $conn->prepare("
-        SELECT t.*, GROUP_CONCAT(s.subject_name) as subject_names
+        SELECT t.teacher_id, u.full_name, u.email, t.id as teacher_table_id
         FROM teachers t
-        LEFT JOIN subjects s ON t.id = s.teacher_id
-        WHERE t.id = ?
-        GROUP BY t.id
+        JOIN users u ON t.user_id = u.id
+        WHERE u.id = ?
     ");
-    $stmt->bind_param("i", $teacher_id);
+    $stmt->bind_param("i", $user_id);
     $stmt->execute();
-    $result = $stmt->get_result();
-    $teacher = $result->fetch_assoc();
+    $teacher = $stmt->get_result()->fetch_assoc();
 
     if (!$teacher) {
         throw new Exception("Teacher not found");
     }
 
-    // Format the response
+    // Get subjects taught by this teacher
+    $stmt = $conn->prepare("
+        SELECT subject_name FROM subjects WHERE teacher_id = ?
+    ");
+    $stmt->bind_param("i", $teacher['teacher_table_id']);
+    $stmt->execute();
+    $subjects = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
     $response = [
         'teacher_id' => $teacher['teacher_id'],
         'full_name' => $teacher['full_name'],
         'email' => $teacher['email'],
-        'subjects' => array_map(function($subject) {
-            return ['subject_name' => $subject];
-        }, explode(',', $teacher['subject_names'] ?? ''))
+        'subjects' => $subjects
     ];
 
     echo json_encode($response);

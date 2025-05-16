@@ -1,5 +1,6 @@
 <?php
 require_once 'auth_check.php';
+require_once 'components/buttons.php';
 requireStudent();
 $user = getCurrentUser();
 
@@ -18,8 +19,10 @@ $stmt = $conn->prepare("
         s.subject_code,
         s.subject_name,
         tu.full_name as teacher_name,
-        COALESCE(AVG(g.score), 0) as average_grade,
-        COUNT(DISTINCT g.id) as total_grades
+        COALESCE(AVG(CASE WHEN g.grade_type = 'final' THEN g.score END), 0) as average_grade,
+        COALESCE(AVG(CASE WHEN g.grade_type = 'attendance' THEN g.score END), 0) as attendance_rate,
+        COALESCE(AVG(CASE WHEN g.grade_type = 'activity_completion' THEN g.score END), 0) as activity_completion,
+        COUNT(DISTINCT CASE WHEN g.grade_type = 'final' THEN g.id END) as total_grades
     FROM subjects s
     JOIN student_subjects ss ON s.id = ss.subject_id
     JOIN students st ON ss.student_id = st.id
@@ -29,6 +32,7 @@ $stmt = $conn->prepare("
     LEFT JOIN grades g ON s.id = g.subject_id AND st.id = g.student_id
     WHERE u.id = ? AND ss.status = 'active'
     GROUP BY s.id, s.subject_code, s.subject_name, tu.full_name
+    LIMIT 10
 ");
 $stmt->bind_param("i", $user['id']);
 $stmt->execute();
@@ -79,16 +83,22 @@ $stmt->bind_param("i", $user['id']);
 $stmt->execute();
 $requests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-// Calculate overall average
+// Calculate overall statistics
 $totalGrade = 0;
+$totalAttendance = 0;
+$totalActivityCompletion = 0;
 $subjectsWithGrades = 0;
 foreach ($subjects as $subject) {
     if ($subject['total_grades'] > 0) {
         $totalGrade += $subject['average_grade'];
+        $totalAttendance += $subject['attendance_rate'];
+        $totalActivityCompletion += $subject['activity_completion'];
         $subjectsWithGrades++;
     }
 }
 $overallAverage = $subjectsWithGrades > 0 ? round($totalGrade / $subjectsWithGrades, 2) : 0;
+$overallAttendance = $subjectsWithGrades > 0 ? round($totalAttendance / $subjectsWithGrades, 2) : 0;
+$overallActivityCompletion = $subjectsWithGrades > 0 ? round($totalActivityCompletion / $subjectsWithGrades, 2) : 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -162,7 +172,7 @@ $overallAverage = $subjectsWithGrades > 0 ? round($totalGrade / $subjectsWithGra
                         Logout
                     </a>
                 </li>
-            </ul>
+        </ul>
         </nav>
     </div>
 
@@ -174,7 +184,7 @@ $overallAverage = $subjectsWithGrades > 0 ? round($totalGrade / $subjectsWithGra
                 <span>📘 Class: <?php echo htmlspecialchars($user['username']); ?></span>
                 <span>|</span>
                 <span>🎓 Academic Term: <?php echo $academicTerm . ' ' . $academicYear; ?></span>
-            </div>
+        </div>
         </div>
 
         <!-- Quick Overview Cards -->
@@ -319,8 +329,8 @@ $overallAverage = $subjectsWithGrades > 0 ? round($totalGrade / $subjectsWithGra
                     <div class="text-sm text-gray-600">Upcoming exam in Web Development next week</div>
                 </div>';
                 ?>
+                </div>
             </div>
-        </div>
 
         <!-- Help Section -->
         <div class="bg-gradient-to-r from-sky-50 to-white rounded-2xl p-8 text-center shadow-sm">

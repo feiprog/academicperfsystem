@@ -12,13 +12,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $role = 'student'; // Since this is student registration
     
     // Additional fields based on role
-    $year_level = isset($_POST['year_level']) ? $conn->real_escape_string($_POST['year_level']) . 'st Year' : null;
+    $year_level = isset($_POST['year_level']) ? $conn->real_escape_string($_POST['year_level']) . 'nd Year' : null;
+    if ($year_level === '1nd Year') {
+        $year_level = '1st Year';
+    }
     $degree_program = isset($_POST['program']) ? $conn->real_escape_string($_POST['program']) : null;
     
-    // Determine current semester based on date
+    // Determine current semester based on date (only 1st and 2nd semesters)
     $currentMonth = date('n');
-    $semester = ($currentMonth >= 6 && $currentMonth <= 10) ? '1st Sem' : 
-                (($currentMonth >= 11 && $currentMonth <= 3) ? '2nd Sem' : 'Summer');
+    $semester = ($currentMonth >= 6 && $currentMonth <= 10) ? '1st Sem' : '2nd Sem';
 
     // Validate password match
     if ($_POST['password'] !== $_POST['confirm_password']) {
@@ -66,7 +68,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     )";
             $stmt = $conn->prepare($sql);
             $stmt->bind_param("isssi", $student_db_id, $degree_program, $year_level, $semester, $student_db_id);
-            $stmt->execute();
+        $stmt->execute();
 
             // Log enrollment for debugging
             $enrolled_count = $stmt->affected_rows;
@@ -352,7 +354,8 @@ $degree_programs = ['BSIT', 'BSCS', 'BSCE', 'BSEE'];
                                            name="password" 
                                            required 
                                            class="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-colors"
-                                           placeholder="Create a password">
+                                           placeholder="Create a password"
+                                           onkeyup="checkPasswordStrength()">
                                     <button type="button" 
                                             onclick="togglePassword()"
                                             class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
@@ -361,6 +364,18 @@ $degree_programs = ['BSIT', 'BSCS', 'BSCE', 'BSEE'];
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                         </svg>
                                     </button>
+                                </div>
+                                <!-- Password Strength Indicator -->
+                                <div class="mt-2">
+                                    <div class="flex items-center space-x-2">
+                                        <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                            <div id="strengthBar" class="h-full w-0 transition-all duration-300"></div>
+                                        </div>
+                                        <span id="strengthText" class="text-sm font-medium"></span>
+                                    </div>
+                                    <p class="mt-1 text-sm text-gray-500">
+                                        Password must be at least 8 characters long and contain only letters and numbers.
+                                    </p>
                                 </div>
                             </div>
 
@@ -416,6 +431,93 @@ $degree_programs = ['BSIT', 'BSCS', 'BSCE', 'BSEE'];
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 `;
+            }
+        }
+
+        function checkPasswordStrength() {
+            const password = document.getElementById('password').value;
+            const strengthBar = document.getElementById('strengthBar');
+            const strengthText = document.getElementById('strengthText');
+            
+            // Reset strength indicator
+            strengthBar.style.width = '0%';
+            strengthBar.className = 'h-full w-0 transition-all duration-300';
+            strengthText.textContent = '';
+            
+            if (password.length === 0) return;
+            
+            // Check for special characters
+            if (/[^a-zA-Z0-9]/.test(password)) {
+                strengthBar.style.width = '0%';
+                strengthBar.className = 'h-full w-0 bg-red-500 transition-all duration-300';
+                strengthText.textContent = 'Special characters not allowed';
+                strengthText.className = 'text-sm font-medium text-red-500';
+                return;
+            }
+            
+            let strength = 0;
+            let feedback = [];
+            
+            // Length check
+            if (password.length >= 8) {
+                strength += 1;
+            } else {
+                feedback.push('At least 8 characters');
+            }
+            
+            // Contains number
+            if (/\d/.test(password)) {
+                strength += 1;
+            } else {
+                feedback.push('Include numbers');
+            }
+            
+            // Contains letter
+            if (/[a-zA-Z]/.test(password)) {
+                strength += 1;
+            } else {
+                feedback.push('Include letters');
+            }
+            
+            // Contains both uppercase and lowercase
+            if (/[a-z]/.test(password) && /[A-Z]/.test(password)) {
+                strength += 1;
+            } else {
+                feedback.push('Mix of upper and lowercase');
+            }
+            
+            // Update strength indicator
+            switch(strength) {
+                case 0:
+                case 1:
+                    strengthBar.style.width = '25%';
+                    strengthBar.className = 'h-full bg-red-500 transition-all duration-300';
+                    strengthText.textContent = 'Weak';
+                    strengthText.className = 'text-sm font-medium text-red-500';
+                    break;
+                case 2:
+                    strengthBar.style.width = '50%';
+                    strengthBar.className = 'h-full bg-yellow-500 transition-all duration-300';
+                    strengthText.textContent = 'Medium';
+                    strengthText.className = 'text-sm font-medium text-yellow-500';
+                    break;
+                case 3:
+                    strengthBar.style.width = '75%';
+                    strengthBar.className = 'h-full bg-blue-500 transition-all duration-300';
+                    strengthText.textContent = 'Good';
+                    strengthText.className = 'text-sm font-medium text-blue-500';
+                    break;
+                case 4:
+                    strengthBar.style.width = '100%';
+                    strengthBar.className = 'h-full bg-green-500 transition-all duration-300';
+                    strengthText.textContent = 'Strong';
+                    strengthText.className = 'text-sm font-medium text-green-500';
+                    break;
+            }
+            
+            // Show feedback if password is not strong
+            if (strength < 4) {
+                strengthText.textContent += ' - ' + feedback.join(', ');
             }
         }
 

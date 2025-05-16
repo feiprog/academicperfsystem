@@ -28,7 +28,7 @@ $stmt = $conn->prepare("
         s.subject_code,
         s.subject_name,
         st.student_id,
-        CONCAT(u.first_name, ' ', u.last_name) as student_name,
+        u.full_name as student_name,
         u.email as student_email
     FROM report_requests rr
     JOIN subjects s ON rr.subject_id = s.id

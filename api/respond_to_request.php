@@ -1,4 +1,8 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 require_once '../auth_check.php';
 requireTeacher();
 header('Content-Type: application/json');
@@ -63,6 +67,16 @@ try {
             throw new Exception('Report content is required for approval');
         }
 
+        // Extract grade from report_content (look for 'Current Grade:')
+        $grade = null;
+        if (preg_match('/Current Grade:\s*([0-9]{1,3})%?/', $report_content, $matches)) {
+            $grade = floatval($matches[1]);
+        }
+
+        // Get attendance and activity completion from POST
+        $attendance = isset($_POST['attendance']) ? floatval($_POST['attendance']) : null;
+        $activity_completion = isset($_POST['activity_completion']) ? floatval($_POST['activity_completion']) : null;
+
         // Create a new report
         $stmt = $conn->prepare("
             INSERT INTO reports (
@@ -71,10 +85,11 @@ try {
                 report_type,
                 content,
                 status,
-                reviewed_by
-            ) VALUES (?, ?, ?, ?, 'approved', ?)
+                reviewed_by,
+                reviewed_at
+            ) VALUES (?, ?, ?, ?, 'approved', ?, NOW())
         ");
-        $stmt->bind_param("iisssi", 
+        $stmt->bind_param("iisss", 
             $request['student_id'],
             $request['subject_id'],
             $request['request_type'],
@@ -83,6 +98,37 @@ try {
         );
         $stmt->execute();
         $report_id = $conn->insert_id;
+
+        // Save grade if found
+        if ($grade !== null) {
+            $stmt = $conn->prepare("
+                INSERT INTO grades (student_id, subject_id, grade_type, score, graded_by, graded_at)
+                VALUES (?, ?, 'final', ?, ?, NOW())
+                ON DUPLICATE KEY UPDATE score = VALUES(score), graded_by = VALUES(graded_by), graded_at = NOW()
+            ");
+            $stmt->bind_param("iidi", $request['student_id'], $request['subject_id'], $grade, $teacher['id']);
+            $stmt->execute();
+        }
+        // Save attendance if found
+        if ($attendance !== null) {
+            $stmt = $conn->prepare("
+                INSERT INTO grades (student_id, subject_id, grade_type, score, graded_by, graded_at)
+                VALUES (?, ?, 'attendance', ?, ?, NOW())
+                ON DUPLICATE KEY UPDATE score = VALUES(score), graded_by = VALUES(graded_by), graded_at = NOW()
+            ");
+            $stmt->bind_param("iidi", $request['student_id'], $request['subject_id'], $attendance, $teacher['id']);
+            $stmt->execute();
+        }
+        // Save activity completion if found
+        if ($activity_completion !== null) {
+            $stmt = $conn->prepare("
+                INSERT INTO grades (student_id, subject_id, grade_type, score, graded_by, graded_at)
+                VALUES (?, ?, 'activity_completion', ?, ?, NOW())
+                ON DUPLICATE KEY UPDATE score = VALUES(score), graded_by = VALUES(graded_by), graded_at = NOW()
+            ");
+            $stmt->bind_param("iidi", $request['student_id'], $request['subject_id'], $activity_completion, $teacher['id']);
+            $stmt->execute();
+        }
 
         // Update request status
         $stmt = $conn->prepare("
