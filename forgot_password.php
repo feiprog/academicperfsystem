@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Get current time in PHP and convert to MySQL datetime
         $now = new DateTime('now', new DateTimeZone('UTC'));
         $expires = clone $now;
-        $expires->modify('-10 minutes');
+        $expires->modify('+10 minutes');
         
         // Store reset token with expiration
         $stmt = $conn->prepare("INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)");

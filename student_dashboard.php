@@ -181,7 +181,7 @@ $overallActivityCompletion = $subjectsWithGrades > 0 ? round($totalActivityCompl
         <div class="bg-gradient-to-r from-sky-500 to-sky-600 rounded-2xl p-8 text-white shadow-lg mb-8">
             <h1 class="text-3xl font-semibold mb-2">Welcome, <?php echo htmlspecialchars($user['full_name']); ?>! 👋</h1>
             <div class="text-sky-100 space-x-4">
-                <span>📘 Class: <?php echo htmlspecialchars($user['username']); ?></span>
+                <span>📘 Username: <?php echo htmlspecialchars($user['username']); ?></span>
                 <span>|</span>
                 <span>🎓 Academic Term: <?php echo $academicTerm . ' ' . $academicYear; ?></span>
         </div>
@@ -232,24 +232,20 @@ $overallActivityCompletion = $subjectsWithGrades > 0 ? round($totalActivityCompl
                             <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Subject</th>
                             <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Instructor</th>
                             <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Grade</th>
-                            <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Action</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         <?php foreach ($subjects as $subject): ?>
                         <tr class="hover:bg-sky-50/50 transition-colors">
-                            <td class="px-6 py-4 text-sm text-gray-900"><?php echo htmlspecialchars($subject['subject_name']); ?></td>
+                            <td class="px-6 py-4 text-sm text-gray-900">
+                                <?php echo htmlspecialchars($subject['subject_name']); ?>
+                                <div class="text-xs text-gray-500">ID: <?php echo $subject['subject_id']; ?></div>
+                            </td>
                             <td class="px-6 py-4 text-sm text-gray-600"><?php echo htmlspecialchars($subject['teacher_name']); ?></td>
                             <td class="px-6 py-4">
                                 <span class="px-3 py-1.5 text-sm rounded-lg <?php echo getGradeColorClass($subject['average_grade']); ?>">
                                     <?php echo round($subject['average_grade']); ?>%
                                 </span>
-                            </td>
-                            <td class="px-6 py-4">
-                                <a href="view_subject.php?id=<?php echo $subject['subject_id']; ?>" 
-                                   class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-sky-600 rounded-lg hover:bg-sky-700 transition-colors">
-                                    🔍 View
-                                </a>
                             </td>
                         </tr>
                         <?php endforeach; ?>
