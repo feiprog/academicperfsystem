@@ -5,7 +5,19 @@ require_once '../db.php';
 header('Content-Type: application/json');
 
 try {
-    $teacher_id = $_SESSION['user_id'];
+    // Get teacher's ID
+    $user = getCurrentUser();
+    $stmt = $conn->prepare("SELECT id FROM teachers WHERE user_id = ?");
+    $stmt->bind_param("i", $user['id']);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $teacher = $result->fetch_assoc();
+
+    if (!$teacher) {
+        throw new Exception('Teacher record not found');
+    }
+
+    $teacher_id = $teacher['id'];
     
     // Get notifications for teacher's subjects
     $stmt = $conn->prepare("
@@ -26,15 +38,13 @@ try {
             -- Pending report alerts
             SELECT 
                 'alert' as type,
-                CONCAT(COUNT(DISTINCT s.id), ' pending report requests in ', sub.subject_name) as message
-            FROM students s
-            JOIN student_subjects ss ON s.id = ss.student_id
-            JOIN subjects sub ON ss.subject_id = sub.id
-            LEFT JOIN reports r ON s.id = r.student_id AND sub.id = r.subject_id
+                CONCAT(COUNT(DISTINCT rr.id), ' pending report requests in ', sub.subject_name) as message
+            FROM report_requests rr
+            JOIN subjects sub ON rr.subject_id = sub.id
             WHERE sub.teacher_id = ?
-            AND (r.id IS NULL OR r.status = 'pending')
+            AND rr.status = 'pending'
             GROUP BY sub.id, sub.subject_name
-            HAVING COUNT(DISTINCT s.id) > 0
+            HAVING COUNT(DISTINCT rr.id) > 0
         ),
         upcoming_activities AS (
             -- Upcoming activity alerts

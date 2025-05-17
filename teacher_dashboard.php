@@ -70,7 +70,7 @@
                         Logout
                     </a>
                 </li>
-            </ul>
+        </ul>
         </nav>
     </div>
 
@@ -91,12 +91,12 @@
                 <div class="text-3xl mb-3 text-sky-500">👥</div>
                 <div class="text-2xl font-semibold text-sky-600 mb-1" id="totalStudents">0</div>
                 <div class="text-gray-600">Total Students</div>
-            </div>
+                    </div>
             <div class="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
                 <div class="text-3xl mb-3 text-sky-500">📝</div>
                 <div class="text-2xl font-semibold text-sky-600 mb-1" id="pendingReports">0</div>
                 <div class="text-gray-600">Pending Reports</div>
-            </div>
+                    </div>
             <div class="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
                 <div class="text-3xl mb-3 text-sky-500">📊</div>
                 <div class="text-2xl font-semibold text-sky-600 mb-1" id="monthlyReports">0</div>
@@ -120,7 +120,7 @@
                     </h2>
                 </div>
                 <div id="notificationsContainer" class="divide-y divide-gray-100">
-                    <!-- Will be populated by JavaScript -->
+                        <!-- Will be populated by JavaScript -->
                 </div>
             </div>
 
@@ -144,7 +144,7 @@
                             </tr>
                         </thead>
                         <tbody id="pendingRequestsTable" class="divide-y divide-gray-100">
-                            <!-- Will be populated by JavaScript -->
+                    <!-- Will be populated by JavaScript -->
                         </tbody>
                     </table>
                 </div>
@@ -168,27 +168,27 @@
                            class="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
                     <select id="classFilter" 
                             class="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
-                        <option value="">All Classes</option>
-                    </select>
+                    <option value="">All Classes</option>
+                </select>
                     <select id="performanceFilter" 
                             class="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
-                        <option value="">All Performance Levels</option>
-                        <option value="high">High Performance</option>
-                        <option value="average">Average Performance</option>
-                        <option value="low">Low Performance</option>
-                    </select>
+                    <option value="">All Performance Levels</option>
+                    <option value="high">High Performance</option>
+                    <option value="average">Average Performance</option>
+                    <option value="low">Low Performance</option>
+                </select>
                     <select id="reportStatusFilter" 
                             class="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
-                        <option value="">All Report Status</option>
-                        <option value="pending">Pending Reports</option>
-                        <option value="submitted">Submitted Reports</option>
-                    </select>
-                </div>
+                    <option value="">All Report Status</option>
+                    <option value="pending">Pending Reports</option>
+                    <option value="submitted">Submitted Reports</option>
+                </select>
+            </div>
 
                 <!-- Student Table -->
                 <div class="overflow-x-auto">
                     <table class="w-full">
-                        <thead>
+                <thead>
                             <tr class="bg-gray-50">
                                 <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Student ID</th>
                                 <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Name</th>
@@ -196,12 +196,12 @@
                                 <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Average Score</th>
                                 <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Attendance</th>
                                 <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Status</th>
-                            </tr>
-                        </thead>
+                    </tr>
+                </thead>
                         <tbody id="studentTableBody" class="divide-y divide-gray-100">
-                            <!-- Will be populated by JavaScript -->
-                        </tbody>
-                    </table>
+                    <!-- Will be populated by JavaScript -->
+                </tbody>
+            </table>
                 </div>
             </div>
         </div>
@@ -219,12 +219,11 @@
                 </div>
                 <form id="responseForm" class="space-y-6">
                     <input type="hidden" id="requestId" name="request_id">
-                    <div>
-                        <label for="responseNotes" class="block text-sm font-medium text-gray-700 mb-2">Response Notes:</label>
-                        <textarea id="responseNotes" 
-                                  name="response_notes" 
-                                  required
-                                  class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 min-h-[100px]"></textarea>
+                    <div class="mb-6">
+                        <label for="responseNotes" class="block text-sm font-medium text-gray-700 mb-1">Response Notes</label>
+                        <textarea id="responseNotes" name="response_notes" rows="4" required
+                                  placeholder="Please provide your response or feedback..."
+                                  class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></textarea>
                     </div>
                     <div id="reportContentGroup" class="hidden space-y-4">
                         <div>
@@ -352,11 +351,13 @@
             const uniqueStudentIds = new Set(students.map(s => s.student_id));
             const totalStudents = uniqueStudentIds.size;
             const averageScore = students.reduce((acc, student) => acc + (student.average_score || 0), 0) / (students.length || 1);
-            const pendingReports = students.filter(s => !s.last_report).length;
-
             document.getElementById('totalStudents').textContent = totalStudents;
             document.getElementById('averagePerformance').textContent = `${averageScore.toFixed(1)}%`;
-            document.getElementById('pendingReports').textContent = pendingReports;
+        }
+
+        // Update only the pending reports count
+        function updatePendingReportsCount(count) {
+            document.getElementById('pendingReports').textContent = count;
         }
 
         // Load notifications
@@ -404,33 +405,36 @@
             fetch('api/get_pending_requests.php')
                 .then(response => response.json())
                 .then(requests => {
-                    console.log('DEBUG: Pending requests:', requests);
                     const tableBody = document.getElementById('pendingRequestsTable');
                     if (requests.length === 0) {
                         tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No pending requests</td></tr>';
-                        return;
+                    } else {
+                        tableBody.innerHTML = requests.map(request => `
+                            <tr>
+                                <td>
+                                    ${request.student_name}<br>
+                                    <small>${request.student_id}</small>
+                                </td>
+                                <td>${request.subject_code} - ${request.subject_name}</td>
+                                <td>${request.request_type.charAt(0).toUpperCase() + request.request_type.slice(1)}</td>
+                                <td>${new Date(request.request_date).toLocaleDateString()}</td>
+                                <td>
+                                    <button onclick="showResponseModal(${request.request_id})" class="action-button bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors">
+                                        Respond
+                                    </button>
+                                </td>
+                            </tr>
+            `).join('');
                     }
-                    tableBody.innerHTML = requests.map(request => `
-                        <tr>
-                            <td>
-                                ${request.student_name}<br>
-                                <small>${request.student_id}</small>
-                            </td>
-                            <td>${request.subject_code} - ${request.subject_name}</td>
-                            <td>${request.request_type.charAt(0).toUpperCase() + request.request_type.slice(1)}</td>
-                            <td>${new Date(request.request_date).toLocaleDateString()}</td>
-                            <td>
-                                <button onclick="showResponseModal(${request.request_id})" class="action-button bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors">
-                                    Respond
-                                </button>
-                            </td>
-                        </tr>
-                    `).join('');
+                    // Update only the pending reports count
+                    updatePendingReportsCount(requests.length);
                 })
                 .catch(error => {
                     console.error('Error loading pending requests:', error);
                     const tableBody = document.getElementById('pendingRequestsTable');
                     tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: red;">Error loading pending requests. Check console for details.</td></tr>';
+                    // Set pending reports count to 0 on error
+                    updatePendingReportsCount(0);
                 });
         }
 
@@ -490,12 +494,22 @@
                 formData.set('activity_completion', activityCompletion);
             } else {
                 reportContentGroup.style.display = 'none';
+                // For reject action, ensure response notes are provided
+                const responseNotes = document.getElementById('responseNotes').value.trim();
+                if (!responseNotes) {
+                    alert('Please provide a reason for rejection');
+                    return;
+                }
             }
 
             if (!form.checkValidity()) {
                 form.reportValidity();
                 return;
             }
+
+            // Disable buttons during submission
+            const buttons = form.querySelectorAll('button');
+            buttons.forEach(btn => btn.disabled = true);
 
             fetch('api/respond_to_request.php', {
                 method: 'POST',
@@ -515,6 +529,10 @@
             .catch(error => {
                 console.error('Error:', error);
                 alert('An error occurred while processing your response');
+            })
+            .finally(() => {
+                // Re-enable buttons after submission
+                buttons.forEach(btn => btn.disabled = false);
             });
         }
 
@@ -533,10 +551,7 @@
 
         // Update student table row styling
         function createStudentRow(student) {
-            // Only show if there is a grade, attendance, or activity completion
-            if (!student.average_score && !student.attendance && !student.activity_completion) {
-                return '';
-            }
+            // Always show all students
             const statusClass = getStatusClass(student.average_score);
             const statusText = getStatusText(student.average_score);
             return `

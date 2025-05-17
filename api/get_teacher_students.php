@@ -5,11 +5,23 @@ require_once '../db.php';
 header('Content-Type: application/json');
 
 try {
-    $teacher_id = $_SESSION['user_id'];
+    // Get teacher's ID
+    $user = getCurrentUser();
+    $stmt = $conn->prepare("SELECT id FROM teachers WHERE user_id = ?");
+    $stmt->bind_param("i", $user['id']);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $teacher = $result->fetch_assoc();
+
+    if (!$teacher) {
+        throw new Exception('Teacher record not found');
+    }
+
+    $teacher_id = $teacher['id'];
     
     // Get students enrolled in teacher's subjects
     $stmt = $conn->prepare("
-        SELECT 
+        SELECT DISTINCT
             s.id,
             s.student_id,
             CONCAT(s.first_name, ' ', s.last_name) as name,

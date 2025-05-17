@@ -31,34 +31,31 @@ try {
     
     $query = "
         SELECT 
-            g.id,
-            s.student_id,
-            CONCAT(s.first_name, ' ', s.last_name) as student_name,
+            s.id AS student_id,
+            s.student_id AS student_number,
+            CONCAT(s.first_name, ' ', s.last_name) AS student_name,
+            g.id AS grade_id,
             g.grade_type,
             g.score,
-            DATE_FORMAT(g.graded_at, '%Y-%m-%d %h:%i %p') as graded_at,
+            DATE_FORMAT(g.graded_at, '%Y-%m-%d %h:%i %p') AS graded_at,
             CASE 
                 WHEN g.score >= 90 THEN 'Excellent'
                 WHEN g.score >= 80 THEN 'Good'
                 WHEN g.score >= 70 THEN 'Fair'
                 WHEN g.score >= 60 THEN 'Poor'
+                WHEN g.score IS NULL THEN 'No Grade'
                 ELSE 'Failed'
-            END as status
-        FROM grades g
-        JOIN students s ON g.student_id = s.id
-        JOIN student_subjects ss ON s.id = ss.student_id
-        WHERE ss.subject_id = ? 
-        $gradeTypeCondition
+            END AS status
+        FROM student_subjects ss
+        JOIN students s ON ss.student_id = s.id
+        LEFT JOIN grades g ON g.student_id = s.id AND g.subject_id = ss.subject_id
+        WHERE ss.subject_id = ?
+          AND ss.status = 'active'
         ORDER BY s.last_name, s.first_name, g.graded_at DESC
     ";
 
     $stmt = $conn->prepare($query);
-    
-    if ($gradeType !== 'all') {
-        $stmt->bind_param("is", $subjectId, $gradeType);
-    } else {
-        $stmt->bind_param("i", $subjectId);
-    }
+    $stmt->bind_param("i", $subjectId);
     
     $stmt->execute();
     $result = $stmt->get_result();

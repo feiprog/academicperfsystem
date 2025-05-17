@@ -255,11 +255,13 @@ $subjects = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
         // Update grade summary statistics
         function updateGradeSummary(grades) {
-            const totalStudents = grades.length;
-            const scores = grades.map(g => parseFloat(g.score));
-            const average = scores.reduce((a, b) => a + b, 0) / totalStudents || 0;
-            const highest = Math.max(...scores) || 0;
-            const lowest = Math.min(...scores) || 0;
+            // Count unique students by student_id
+            const uniqueStudentIds = new Set(grades.map(g => g.student_id));
+            const totalStudents = uniqueStudentIds.size;
+            const scores = grades.filter(g => g.score !== null && !isNaN(g.score)).map(g => parseFloat(g.score));
+            const average = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+            const highest = scores.length > 0 ? Math.max(...scores) : 0;
+            const lowest = scores.length > 0 ? Math.min(...scores) : 0;
 
             document.getElementById('totalStudents').textContent = totalStudents;
             document.getElementById('averageGrade').textContent = average.toFixed(1) + '%';

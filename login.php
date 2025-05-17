@@ -305,7 +305,7 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_token'])) {
                                 class="w-full bg-gradient-to-r from-sky-500 to-sky-600 text-white py-2.5 px-4 rounded-lg hover:from-sky-600 hover:to-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 transform transition-all duration-200 hover:-translate-y-0.5 font-medium animate-slide-in delay-400">
                             Sign In
                         </button>
-                    </form>
+        </form>
         
                     <div class="mt-6 text-center animate-fade-in delay-500">
                         <p class="text-sm text-gray-600">
