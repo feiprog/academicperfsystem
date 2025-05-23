@@ -1,119 +1,93 @@
 # Academic Performance Monitoring System
 
-A comprehensive system for monitoring and managing academic performance in educational institutions.
+A web-based system for monitoring and managing academic performance in educational institutions.
 
-## Features
-
-- User Management (Admin, Teachers, Students)
-- Grade Management
-- Performance Tracking
-- Attendance Monitoring
-- Report Generation
-- Real-time Notifications
-- Secure Authentication
-- Activity Logging
-
-## System Requirements
-
-- PHP 7.4 or higher
-- MySQL 5.7 or higher
-- Apache/Nginx Web Server
-- XAMPP (recommended for easy setup)
-
-## Installation
-
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/academicperfsystem.git
-```
-
-2. Set up the database:
-- Create a new MySQL database named 'academicperfsystem'
-- Import the SQL files from the 'sql' directory in this order:
-  - admin_setup.sql
-  - create_login_history.sql
-  - update_schema.sql
-
-3. Configure the system:
-- Copy config.php to config.local.php
-- Update database credentials in config.local.php
-- Ensure proper permissions for logs/, uploads/, and backups/ directories
-
-4. Default Credentials:
-- Admin: username "admin" / password "admin123"
-- Teachers: usernames "mramos", "sabina", "jagudo", "jsabalo" / password "password123"
-- Students: Test accounts available with password "password123"
-
-## Directory Structure
+## Project Structure
 
 ```
 academicperfsystem/
-├── api/              # API endpoints
-├── includes/         # Core system files
-├── sql/             # Database scripts
-├── css/             # Stylesheets
-├── images/          # System images
-├── uploads/         # User uploads
-├── logs/            # System logs
-└── backups/         # Database backups
+├── config/               # Configuration files
+│   ├── config.php       # Main configuration
+│   └── db.php          # Database configuration
+├── auth/                # Authentication related files
+│   ├── login.php
+│   ├── register.php
+│   └── ...
+├── admin/               # Admin module
+│   ├── dashboard.php
+│   └── ...
+├── teacher/             # Teacher module
+│   ├── dashboard.php
+│   └── ...
+├── student/             # Student module
+│   ├── dashboard.php
+│   └── ...
+├── api/                 # API endpoints
+├── includes/            # Shared components
+├── assets/              # Static assets
+│   ├── css/
+│   ├── js/
+│   └── images/
+├── database/           # Database related files
+│   ├── migrations/     # SQL migration files
+│   └── backups/        # Database backups
+├── logs/               # System logs
+├── uploads/            # User uploads
+└── vendor/             # Dependencies
 ```
 
-## Security Features
+## Setup Instructions
 
-- Session Management
-- Password Hashing
-- SQL Injection Prevention
-- XSS Protection
-- CSRF Protection
-- Activity Logging
-- Error Handling
+1. Clone the repository
+2. Configure your web server (Apache/Nginx) to point to the project directory
+3. Create a MySQL database
+4. Import the database structure:
+   ```bash
+   mysql -u your_username -p your_database < database/migrations/complete_setup.sql
+   ```
+5. Copy `config/config.example.php` to `config/config.php` and update with your settings
+6. Ensure the following directories are writable by the web server:
+   - logs/
+   - uploads/
+   - database/backups/
 
-## Maintenance
+## Default Accounts
 
-The system includes several maintenance tools:
-- verify_system.php - System health check
-- backup_database.php - Database backup
-- update_database.php - Database updates
+### Admin
+- Email: admin@school.edu
+- Password: admin123
 
-## Updates and Upgrades
+### Teachers
+- Email: [firstname.lastname]@school.edu
+- Password: password123
 
-1. Pull the latest changes:
-```bash
-git pull origin main
-```
+### Students
+- Email: Various test accounts available
+- Password: student123
 
-2. Run database updates:
-```bash
-php update_database.php
-```
+## Features
 
-3. Verify system:
-```bash
-php verify_system.php
-```
+- User authentication and authorization
+- Role-based access control (Admin, Teacher, Student)
+- Grade management
+- Performance monitoring
+- Subject management
+- Student enrollment
+- Reporting system
 
-## Troubleshooting
+## Security Notes
 
-Common issues and solutions:
-1. Database Connection:
-   - Verify database credentials in config.php
-   - Ensure MySQL service is running
+- All passwords are hashed using bcrypt
+- Session management implemented
+- Input validation and sanitization in place
+- CSRF protection enabled
 
-2. File Permissions:
-   - Ensure write permissions for logs/, uploads/, and backups/
-   - Check PHP has proper permissions
+## Contributing
 
-3. Session Issues:
-   - Verify PHP session configuration
-   - Clear browser cookies and cache
-
-## Support
-
-For issues and support:
-1. Check the troubleshooting guide
-2. Review error logs in logs/ directory
-3. Submit an issue on GitHub
+1. Create a new branch for your feature
+2. Make your changes
+3. Submit a pull request
 
 ## License
 
-[Your License Type] - See LICENSE file for details 
+[Your License Here] 

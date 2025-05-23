@@ -1,0 +1,56 @@
+academicperfsystem/
+├── config/
+│   ├── config.php
+│   └── db.php
+├── auth/
+│   ├── login.php
+│   ├── logout.php
+│   ├── register.php
+│   ├── forgot_password.php
+│   ├── reset_password.php
+│   └── auth_check.php
+├── admin/
+│   ├── dashboard.php
+│   ├── manage_users.php
+│   ├── manage_teachers.php
+│   ├── manage_subjects.php
+│   └── system_settings.php
+├── teacher/
+│   ├── dashboard.php
+│   ├── manage_grades.php
+│   ├── view_students.php
+│   └── reports.php
+├── student/
+│   ├── dashboard.php
+│   ├── view_grades.php
+│   ├── view_subjects.php
+│   └── enrollment.php
+├── api/
+│   ├── grades.php
+│   ├── subjects.php
+│   ├── users.php
+│   └── reports.php
+├── includes/
+│   ├── header.php
+│   ├── footer.php
+│   ├── sidebar.php
+│   └── functions.php
+├── assets/
+│   ├── css/
+│   │   ├── style.css
+│   │   └── bootstrap.min.css
+│   ├── js/
+│   │   ├── main.js
+│   │   └── bootstrap.min.js
+│   └── images/
+│       └── logo.png
+├── database/
+│   ├── migrations/
+│   │   └── complete_setup.sql
+│   └── backups/
+├── logs/
+├── uploads/
+├── vendor/
+├── .gitignore
+├── README.md
+└── index.php 

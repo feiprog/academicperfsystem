@@ -1,34 +1,49 @@
-# Environment Configuration
-.env
-
-# Logs
-/logs/*
-!/logs/.gitkeep
-
-# Uploads
-/uploads/*
-!/uploads/.gitkeep
-
-# Backups
-/backups/*
-!/backups/.gitkeep
-
-# Dependencies
-/vendor/
-
-# IDE files
+# IDE and Editor files
 .vscode/
 .idea/
+*.sublime-project
+*.sublime-workspace
 
-# System specific files
+# Configuration files
+config/config.php
+
+# Dependency directories
+vendor/
+node_modules/
+
+# Logs and uploads
+logs/*
+!logs/.gitkeep
+uploads/*
+!uploads/.gitkeep
+
+# Database backups
+database/backups/*
+!database/backups/.gitkeep
+
+# Cache and temporary files
+*.cache
+*.tmp
+*.temp
 .DS_Store
 Thumbs.db
 
-# Configuration files with sensitive data
-config.local.php
+# Environment files
+.env
+.env.local
+.env.*.local
 
-# Temporary files
-*.tmp
-*.temp
-*.log
-*.cache 
+# Compiled assets
+assets/css/*.min.css
+assets/js/*.min.js
+
+# Test files
+tests/coverage/
+phpunit.xml
+
+# Composer files
+composer.phar
+composer.lock
+
+# Keep directories
+!.gitkeep 
