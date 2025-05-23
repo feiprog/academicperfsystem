@@ -207,68 +207,83 @@
         </div>
 
         <!-- Response Modal -->
-        <div id="responseModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center overflow-y-auto">
-            <div class="bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 my-8 max-h-[90vh] overflow-y-auto">
-                <div class="flex justify-between items-center mb-6 sticky top-0 bg-white pb-4 border-b">
-                    <h3 class="text-xl font-semibold text-gray-800">Respond to Report Request</h3>
-                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+        <div id="responseModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+            <div class="bg-white rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-semibold text-gray-900">Respond to Report Request</h3>
+                    <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
+
                 <form id="responseForm" class="space-y-6">
                     <input type="hidden" id="requestId" name="request_id">
-                    <div class="mb-6">
-                        <label for="responseNotes" class="block text-sm font-medium text-gray-700 mb-1">Response Notes</label>
-                        <textarea id="responseNotes" name="response_notes" rows="4" required
-                                  placeholder="Please provide your response or feedback..."
-                                  class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></textarea>
+
+                    <!-- Response Notes (Used for both approval and rejection) -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Response Notes / Reason for Rejection:</label>
+                        <textarea id="responseNotes" name="rejection_reason" rows="3" required
+                                  class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                                  placeholder="Enter your response notes or reason for rejection..."></textarea>
                     </div>
-                    <div id="reportContentGroup" class="hidden space-y-4">
+
+                    <!-- Report Content Group (Only shown for approval) -->
+                    <div id="reportContentGroup" class="space-y-6">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Performance Summary:</label>
-                            <textarea id="performanceSummary" name="performance_summary" required class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></textarea>
+                            <textarea id="performanceSummary" name="performance_summary" rows="3"
+                                      class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></textarea>
                         </div>
 
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Current Grade:</label>
-                            <input type="text" id="currentGrade" name="current_grade" required class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500" />
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Attendance (%):</label>
-                            <input type="number" id="attendance" name="attendance" min="0" max="100" step="0.1" required class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500" />
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Current Grade (%):</label>
+                                <input type="number" id="currentGrade" name="current_grade" min="0" max="100" step="0.1"
+                                       class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Attendance (%):</label>
+                                <input type="number" id="attendance" name="attendance" min="0" max="100" step="0.1"
+                                       class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
+                            </div>
                         </div>
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Activity Completion (%):</label>
-                            <input type="number" id="activityCompletion" name="activity_completion" min="0" max="100" step="0.1" required class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500" />
+                            <input type="number" id="activityCompletion" name="activity_completion" min="0" max="100" step="0.1"
+                                   class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
                         </div>
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Strengths:</label>
-                            <textarea id="strengths" name="strengths" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></textarea>
+                            <textarea id="strengths" name="strengths"
+                                      class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></textarea>
                         </div>
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Areas for Improvement:</label>
-                            <textarea id="improvement" name="improvement" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></textarea>
+                            <textarea id="improvement" name="improvement"
+                                      class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></textarea>
                         </div>
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Recommendations:</label>
-                            <textarea id="recommendations" name="recommendations" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></textarea>
+                            <textarea id="recommendations" name="recommendations"
+                                      class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></textarea>
                         </div>
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Additional Comments:</label>
-                            <textarea id="additionalComments" name="additional_comments" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></textarea>
+                            <textarea id="additionalComments" name="additional_comments"
+                                      class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></textarea>
                         </div>
 
                         <!-- Hidden field to store the combined report content -->
                         <textarea id="reportContent" name="report_content" class="hidden"></textarea>
                     </div>
+
                     <div class="flex justify-end space-x-4 sticky bottom-0 bg-white pt-4 border-t">
                         <button type="button" 
                                 onclick="handleResponse('approve')"
@@ -467,13 +482,44 @@
         function handleResponse(action) {
             const form = document.getElementById('responseForm');
             const formData = new FormData(form);
-            formData.append('action', action);
+            const requestId = document.getElementById('requestId').value;
+            const responseNotes = document.getElementById('responseNotes').value.trim();
 
-            // Show/hide report content field based on action
-            const reportContentGroup = document.getElementById('reportContentGroup');
-            const reportContent = document.getElementById('reportContent');
+            // For reject action, ensure response notes are provided
+            if (action === 'reject') {
+                if (!responseNotes) {
+                    alert('Please provide a reason for rejection');
+                    return;
+                }
+
+                // Send to reject endpoint
+                fetch('api/reject_report_request.php', {
+                    method: 'POST',
+                    body: new FormData(form)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Request rejected successfully');
+                        closeModal();
+                        loadPendingRequests();
+                        loadNotifications();
+                    } else {
+                        alert(data.error || 'Failed to reject request');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while rejecting the request');
+                });
+                return;
+            }
+
+            // Handle approval (existing code)
             if (action === 'approve') {
+                const reportContentGroup = document.getElementById('reportContentGroup');
                 reportContentGroup.style.display = 'block';
+                
                 // Get values and ensure they're numbers
                 const attendance = parseFloat(document.getElementById('attendance').value) || 0;
                 const activityCompletion = parseFloat(document.getElementById('activityCompletion').value) || 0;
@@ -488,52 +534,33 @@
                     `Areas for Improvement: ${document.getElementById('improvement').value}\n` +
                     `Recommendations: ${document.getElementById('recommendations').value}\n` +
                     `Additional Comments: ${document.getElementById('additionalComments').value}`;
+                
                 document.getElementById('reportContent').value = reportContent;
                 formData.set('report_content', reportContent);
                 formData.set('attendance', attendance);
                 formData.set('activity_completion', activityCompletion);
-            } else {
-                reportContentGroup.style.display = 'none';
-                // For reject action, ensure response notes are provided
-                const responseNotes = document.getElementById('responseNotes').value.trim();
-                if (!responseNotes) {
-                    alert('Please provide a reason for rejection');
-                    return;
-                }
+
+                // Send to approve endpoint
+                fetch('api/respond_to_request.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        closeModal();
+                        loadPendingRequests();
+                        loadNotifications();
+                    } else {
+                        alert(data.error || 'Failed to approve request');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while processing your response');
+                });
             }
-
-            if (!form.checkValidity()) {
-                form.reportValidity();
-                return;
-            }
-
-            // Disable buttons during submission
-            const buttons = form.querySelectorAll('button');
-            buttons.forEach(btn => btn.disabled = true);
-
-            fetch('api/respond_to_request.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert(data.message);
-                    closeModal();
-                    loadPendingRequests();
-                    loadNotifications();
-                } else {
-                    alert(data.error || 'An error occurred');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while processing your response');
-            })
-            .finally(() => {
-                // Re-enable buttons after submission
-                buttons.forEach(btn => btn.disabled = false);
-            });
         }
 
         // Update notification card styling

@@ -2,35 +2,49 @@
 require_once 'auth_check.php';
 requireAdmin(); // Only administrators can enroll students
 
-// Get all students
+// Get current academic term
+$currentMonth = date('n');
+$currentYear = date('Y');
+$currentSemester = ($currentMonth >= 6 && $currentMonth <= 10) ? 'First Semester' : 'Second Semester';
+$academicYear = ($currentMonth >= 6) ? $currentYear . '-' . ($currentYear + 1) : ($currentYear - 1) . '-' . $currentYear;
+
+// Get all students with their current semester
 $stmt = $conn->prepare("
     SELECT 
         s.id,
         s.student_id,
         CONCAT(s.first_name, ' ', s.last_name) as full_name,
-        s.year_level
+        s.year_level,
+        s.semester,
+        s.academic_year
     FROM students s
     ORDER BY s.last_name, s.first_name
 ");
 $stmt->execute();
 $students = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-// Get all subjects
+// Get subjects for the current semester only
 $stmt = $conn->prepare("
     SELECT 
         s.id,
         s.subject_code,
         s.subject_name,
-        CONCAT(tu.full_name, ' (', s.subject_code, ')') as teacher_name
+        CONCAT(tu.full_name, ' (', s.subject_code, ')') as teacher_name,
+        c.semester,
+        c.year_level,
+        c.degree_program
     FROM subjects s
+    JOIN curriculum c ON s.id = c.subject_id
     LEFT JOIN teachers t ON s.teacher_id = t.id
     LEFT JOIN users tu ON t.user_id = tu.id
+    WHERE c.semester = ?
     ORDER BY s.subject_code
 ");
+$stmt->bind_param("s", $currentSemester);
 $stmt->execute();
 $subjects = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-// Handle enrollment submission
+// Handle enrollment submission with semester validation
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $student_id = $_POST['student_id'] ?? null;
     $subject_ids = $_POST['subject_ids'] ?? [];
@@ -38,6 +52,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($student_id && !empty($subject_ids)) {
         try {
+            // Get student's current semester and year level
+            $stmt = $conn->prepare("SELECT semester, year_level, degree_program FROM students WHERE id = ?");
+            $stmt->bind_param("i", $student_id);
+            $stmt->execute();
+            $student_info = $stmt->get_result()->fetch_assoc();
+
+            if ($student_info['semester'] !== $currentSemester) {
+                throw new Exception("Cannot enroll student in subjects for a different semester.");
+            }
+
             $conn->begin_transaction();
 
             // First, mark all existing enrollments as 'dropped'
@@ -49,22 +73,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bind_param("i", $student_id);
             $stmt->execute();
 
-            // Then, insert new enrollments
+            // Validate and insert new enrollments
             $stmt = $conn->prepare("
                 INSERT INTO student_subjects (student_id, subject_id, enrollment_date, status)
-                VALUES (?, ?, ?, 'active')
-                ON DUPLICATE KEY UPDATE 
-                    status = 'active',
-                    enrollment_date = VALUES(enrollment_date)
+                SELECT ?, ?, ?, 'active'
+                FROM curriculum c
+                WHERE c.subject_id = ?
+                AND c.semester = ?
+                AND c.year_level = ?
+                AND c.degree_program = ?
             ");
 
             foreach ($subject_ids as $subject_id) {
-                $stmt->bind_param("iis", $student_id, $subject_id, $enrollment_date);
+                $stmt->bind_param("iissss", 
+                    $student_id, 
+                    $subject_id, 
+                    $enrollment_date, 
+                    $subject_id,
+                    $currentSemester,
+                    $student_info['year_level'],
+                    $student_info['degree_program']
+                );
                 $stmt->execute();
+                
+                if ($stmt->affected_rows === 0) {
+                    throw new Exception("Subject ID $subject_id is not in the curriculum for this semester and year level.");
+                }
             }
 
             $conn->commit();
-            $success_message = "Student enrolled successfully!";
+            $success_message = "Student enrolled successfully in $currentSemester subjects!";
         } catch (Exception $e) {
             $conn->rollback();
             $error_message = "Error enrolling student: " . $e->getMessage();
@@ -76,11 +114,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $current_enrollments = [];
 if (isset($_GET['student_id'])) {
     $stmt = $conn->prepare("
-        SELECT subject_id 
-        FROM student_subjects 
-        WHERE student_id = ? AND status = 'active'
+        SELECT ss.subject_id 
+        FROM student_subjects ss
+        JOIN curriculum c ON ss.subject_id = c.subject_id
+        WHERE ss.student_id = ? 
+        AND ss.status = 'active'
+        AND c.semester = ?
     ");
-    $stmt->bind_param("i", $_GET['student_id']);
+    $stmt->bind_param("is", $_GET['student_id'], $currentSemester);
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
@@ -103,7 +144,7 @@ if (isset($_GET['student_id'])) {
             <!-- Header -->
             <div class="bg-gradient-to-r from-sky-500 to-sky-600 rounded-2xl p-8 text-white shadow-lg mb-8">
                 <h1 class="text-3xl font-semibold mb-2">Enroll Student in Subjects</h1>
-                <p class="text-sky-100">Select subjects for student enrollment</p>
+                <p class="text-sky-100">Current Term: <?php echo htmlspecialchars($currentSemester . ' - ' . $academicYear); ?></p>
             </div>
 
             <?php if (isset($success_message)): ?>
@@ -135,20 +176,37 @@ if (isset($_GET['student_id'])) {
                                     class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
                                 <option value="">Choose a student...</option>
                                 <?php foreach ($students as $student): ?>
-                                    <option value="<?php echo $student['id']; ?>" 
-                                            <?php echo (isset($_GET['student_id']) && $_GET['student_id'] == $student['id']) ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($student['student_id'] . ' - ' . $student['full_name'] . ' (' . $student['year_level'] . ')'); ?>
-                                    </option>
+                                    <?php if ($student['semester'] === $currentSemester): ?>
+                                        <option value="<?php echo $student['id']; ?>" 
+                                                <?php echo (isset($_GET['student_id']) && $_GET['student_id'] == $student['id']) ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($student['student_id'] . ' - ' . $student['full_name'] . ' (' . $student['year_level'] . ' - ' . $student['semester'] . ')'); ?>
+                                        </option>
+                                    <?php endif; ?>
                                 <?php endforeach; ?>
                             </select>
+                            <p class="mt-1 text-sm text-gray-500">Only showing students enrolled in <?php echo htmlspecialchars($currentSemester); ?></p>
                         </div>
 
                         <?php if (isset($_GET['student_id'])): ?>
                             <!-- Subject Selection -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Select Subjects (6-8 subjects recommended)</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Select Subjects for <?php echo htmlspecialchars($currentSemester); ?></label>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <?php foreach ($subjects as $subject): ?>
+                                    <?php 
+                                    // Get student's year level and program
+                                    $student_info = null;
+                                    foreach ($students as $s) {
+                                        if ($s['id'] == $_GET['student_id']) {
+                                            $student_info = $s;
+                                            break;
+                                        }
+                                    }
+                                    
+                                    foreach ($subjects as $subject): 
+                                        // Only show subjects for student's year level and program
+                                        if ($subject['year_level'] === $student_info['year_level'] && 
+                                            $subject['degree_program'] === $student_info['degree_program']):
+                                    ?>
                                         <div class="flex items-start">
                                             <div class="flex items-center h-5">
                                                 <input type="checkbox" 
@@ -166,7 +224,10 @@ if (isset($_GET['student_id'])) {
                                                 </p>
                                             </div>
                                         </div>
-                                    <?php endforeach; ?>
+                                    <?php 
+                                        endif;
+                                    endforeach; 
+                                    ?>
                                 </div>
                             </div>
 

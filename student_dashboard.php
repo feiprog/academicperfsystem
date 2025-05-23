@@ -7,10 +7,8 @@ $user = getCurrentUser();
 // Get current academic term
 $currentMonth = date('n');
 $currentYear = date('Y');
-$academicTerm = ($currentMonth >= 6 && $currentMonth <= 10) ? '1st Sem' : 
-                (($currentMonth >= 11 && $currentMonth <= 3) ? '2nd Sem' : 'Summer');
-$academicYear = ($currentMonth >= 6) ? $currentYear . '-' . ($currentYear + 1) : 
-                ($currentYear - 1) . '-' . $currentYear;
+$currentSemester = ($currentMonth >= 6 && $currentMonth <= 10) ? 'First Semester' : 'Second Semester';
+$academicYear = ($currentMonth >= 6) ? $currentYear . '-' . ($currentYear + 1) : ($currentYear - 1) . '-' . $currentYear;
 
 // Get student's enrolled subjects with grades and teacher info
 $stmt = $conn->prepare("
@@ -179,12 +177,12 @@ $overallActivityCompletion = $subjectsWithGrades > 0 ? round($totalActivityCompl
     <div class="ml-64 p-8">
         <!-- Welcome Banner -->
         <div class="bg-gradient-to-r from-sky-500 to-sky-600 rounded-2xl p-8 text-white shadow-lg mb-8">
-            <h1 class="text-3xl font-semibold mb-2">Welcome, <?php echo htmlspecialchars($user['full_name']); ?>! 👋</h1>
+            <h1 class="text-3xl font-semibold mb-2">Welcome, <?php echo htmlspecialchars($_SESSION['full_name']); ?>! 👋</h1>
             <div class="text-sky-100 space-x-4">
-                <span>📘 Username: <?php echo htmlspecialchars($user['username']); ?></span>
+                <span>📘 Username: <?php echo htmlspecialchars($_SESSION['username']); ?></span>
                 <span>|</span>
-                <span>🎓 Academic Term: <?php echo $academicTerm . ' ' . $academicYear; ?></span>
-        </div>
+                <span>🎓 Academic Term: <?php echo htmlspecialchars($currentSemester); ?></span>
+            </div>
         </div>
 
         <!-- Quick Overview Cards -->

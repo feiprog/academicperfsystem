@@ -3,6 +3,9 @@ session_start();
 require_once 'db.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Debug: Log the POST data
+    error_log("Registration POST data: " . print_r($_POST, true));
+    
     $username = $conn->real_escape_string($_POST['username']);
     $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
     $email = $conn->real_escape_string($_POST['email']);
@@ -12,19 +15,49 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $role = 'student'; // Since this is student registration
     
     // Additional fields based on role
-    $year_level = isset($_POST['year_level']) ? $conn->real_escape_string($_POST['year_level']) . 'nd Year' : null;
-    if ($year_level === '1nd Year') {
-        $year_level = '1st Year';
+    $year_level = isset($_POST['year_level']) ? $conn->real_escape_string($_POST['year_level']) : null;
+    
+    // Fix year level formatting
+    switch($year_level) {
+        case '1':
+            $year_level = '1st Year';
+            break;
+        case '2':
+            $year_level = '2nd Year';
+            break;
+        case '3':
+            $year_level = '3rd Year';
+            break;
+        case '4':
+            $year_level = '4th Year';
+            break;
+        default:
+            $year_level = null;
     }
+    
     $degree_program = isset($_POST['program']) ? $conn->real_escape_string($_POST['program']) : null;
     
-    // Determine current semester based on date (only 1st and 2nd semesters)
+    // Debug: Log the processed data
+    error_log("Processed registration data: " . print_r([
+        'username' => $username,
+        'email' => $email,
+        'full_name' => $full_name,
+        'year_level' => $year_level,
+        'degree_program' => $degree_program
+    ], true));
+    
+    // Determine current semester based on date
     $currentMonth = date('n');
-    $semester = ($currentMonth >= 6 && $currentMonth <= 10) ? '1st Sem' : '2nd Sem';
+    $semester = ($currentMonth >= 6 && $currentMonth <= 10) ? 'First Semester' : 'Second Semester';
+    $academicYear = ($currentMonth >= 6) ? date('Y') . '-' . (date('Y') + 1) : (date('Y') - 1) . '-' . date('Y');
+
+    // Debug: Log the semester determination
+    error_log("Current month: $currentMonth, Determined semester: $semester");
 
     // Validate password match
     if ($_POST['password'] !== $_POST['confirm_password']) {
         $error = "Passwords do not match";
+        error_log("Registration failed: Passwords do not match");
     } else {
     // Start transaction
     $conn->begin_transaction();
@@ -38,23 +71,40 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 throw new Exception("Username or email already exists");
             }
 
-        // Insert into users table
-        $sql = "INSERT INTO users (username, password, email, full_name, role) VALUES (?, ?, ?, ?, ?)";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("sssss", $username, $password, $email, $full_name, $role);
-        $stmt->execute();
-        $user_id = $conn->insert_id;
+            // Debug: Log the SQL operations
+            error_log("Inserting new user into users table");
+            $sql = "INSERT INTO users (username, password, email, full_name, role) VALUES (?, ?, ?, ?, ?)";
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param("sssss", $username, $password, $email, $full_name, $role);
+            $stmt->execute();
+            $user_id = $conn->insert_id;
+            error_log("New user ID: " . $user_id);
 
             // Insert into students table with auto-generated student ID
             $student_id = 'STU' . date('Y') . str_pad($user_id, 4, '0', STR_PAD_LEFT);
-            $sql = "INSERT INTO students (user_id, student_id, first_name, last_name, year_level, degree_program, semester) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?)";
+            error_log("Generated student ID: " . $student_id);
+            
+            $sql = "INSERT INTO students (user_id, student_id, first_name, last_name, year_level, degree_program, semester, academic_year) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt = $conn->prepare($sql);
-            $stmt->bind_param("issssss", $user_id, $student_id, $first_name, $last_name, $year_level, $degree_program, $semester);
+            $stmt->bind_param("isssssss", $user_id, $student_id, $first_name, $last_name, $year_level, $degree_program, $semester, $academicYear);
+            
+            error_log("Executing student insert with params: " . print_r([
+                'user_id' => $user_id,
+                'student_id' => $student_id,
+                'first_name' => $first_name,
+                'last_name' => $last_name,
+                'year_level' => $year_level,
+                'degree_program' => $degree_program,
+                'semester' => $semester,
+                'academic_year' => $academicYear
+            ], true));
+            
             $stmt->execute();
             $student_db_id = $conn->insert_id;
+            error_log("New student ID in students table: " . $student_db_id);
 
-            // Automatically enroll student in subjects based on curriculum
+            // Automatically enroll student in subjects based on curriculum for the current semester only
             $sql = "INSERT INTO student_subjects (student_id, subject_id, enrollment_date, status)
                     SELECT ?, c.subject_id, CURDATE(), 'active'
                     FROM curriculum c
@@ -68,10 +118,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     )";
             $stmt = $conn->prepare($sql);
             $stmt->bind_param("isssi", $student_db_id, $degree_program, $year_level, $semester, $student_db_id);
-        $stmt->execute();
+            
+            error_log("Executing subject enrollment with params: " . print_r([
+                'student_db_id' => $student_db_id,
+                'degree_program' => $degree_program,
+                'year_level' => $year_level,
+                'semester' => $semester
+            ], true));
+            
+            $stmt->execute();
 
             // Log enrollment for debugging
             $enrolled_count = $stmt->affected_rows;
+            error_log("Number of subjects enrolled: " . $enrolled_count);
+            
             if ($enrolled_count == 0) {
                 // Check if curriculum exists for this program/year/semester
                 $check_curriculum = $conn->prepare("
@@ -84,6 +144,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $check_curriculum->bind_param("sss", $degree_program, $year_level, $semester);
                 $check_curriculum->execute();
                 $curriculum_count = $check_curriculum->get_result()->fetch_assoc()['count'];
+                error_log("Curriculum count for {$degree_program} {$year_level} {$semester}: {$curriculum_count}");
                 
                 if ($curriculum_count == 0) {
                     throw new Exception("No curriculum found for $degree_program $year_level $semester. Please contact the administrator.");
@@ -92,11 +153,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         $conn->commit();
             $_SESSION['success'] = "Registration successful! Your student ID is " . $student_id . ". Please login.";
+            error_log("Registration successful for student ID: " . $student_id);
         header("Location: login.php");
         exit();
     } catch (Exception $e) {
         $conn->rollback();
         $error = "Registration failed: " . $e->getMessage();
+        error_log("Registration failed with error: " . $e->getMessage());
     }
 }
 }

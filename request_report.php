@@ -34,6 +34,7 @@ $stmt = $conn->prepare("
         rr.request_date,
         rr.response_date,
         rr.response_notes,
+        rr.term_period,
         s.subject_code,
         s.subject_name,
         tu.full_name as teacher_name
@@ -163,12 +164,25 @@ $recentRequests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                             <div>
                                 <label for="requestType" class="block text-sm font-medium text-gray-700 mb-1">Report Type</label>
                                 <select id="requestType" name="request_type" required
+                                        onchange="toggleTermSelection(this.value)"
                                         class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
                                     <option value="">Select report type...</option>
+                                    <option value="term">Term Report</option>
                                     <option value="progress">Progress Report</option>
-                                    <option value="midterm">Midterm Report</option>
-                                    <option value="final">Final Report</option>
+                                    <option value="comprehensive">Comprehensive Report</option>
                                     <option value="special">Special Request</option>
+                                </select>
+                            </div>
+
+                            <!-- Term Selection (Initially Hidden) -->
+                            <div id="termSelection" class="hidden">
+                                <label for="termPeriod" class="block text-sm font-medium text-gray-700 mb-1">Select Term</label>
+                                <select id="termPeriod" name="term_period"
+                                        class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
+                                    <option value="preliminary">Preliminary Term</option>
+                                    <option value="midterm">Midterm Term</option>
+                                    <option value="semi_final">Semi-Final Term</option>
+                                    <option value="final">Final Term</option>
                                 </select>
                             </div>
 
@@ -208,18 +222,28 @@ $recentRequests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                             <?php foreach ($recentRequests as $request): ?>
                                 <div class="p-4 hover:bg-sky-50/50 transition-colors">
                                     <div class="flex justify-between items-start mb-2">
-                                        <div class="font-medium text-gray-900">
-                                            <?php echo htmlspecialchars($request['subject_name']); ?>
+                                        <div>
+                                            <div class="font-medium text-gray-900">
+                                                <?php echo htmlspecialchars($request['subject_name']); ?>
+                                            </div>
+                                            <div class="text-sm text-gray-600">
+                                                <?php 
+                                                    $reportType = ucfirst($request['request_type']);
+                                                    if ($request['request_type'] === 'term' && isset($request['term_period'])) {
+                                                        $termPeriod = ucwords(str_replace('_', ' ', $request['term_period']));
+                                                        echo "$reportType - $termPeriod";
+                                                    } else {
+                                                        echo "$reportType Report";
+                                                    }
+                                                ?>
+                                            </div>
                                         </div>
                                         <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium <?php echo getStatusColorClass($request['status']); ?>">
                                             <?php echo ucfirst($request['status']); ?>
                                         </span>
                                     </div>
-                                    <div class="text-sm text-gray-600 mb-2">
-                                        <?php echo ucfirst($request['request_type']); ?> Report
-                                    </div>
                                     <?php if ($request['response_notes']): ?>
-                                        <div class="text-sm text-gray-600 bg-gray-50 p-2 rounded-lg">
+                                        <div class="text-sm text-gray-600 bg-gray-50 p-2 rounded-lg mt-2">
                                             <?php echo htmlspecialchars($request['response_notes']); ?>
                                         </div>
                                     <?php endif; ?>
@@ -236,6 +260,19 @@ $recentRequests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     </div>
 
     <script>
+        function toggleTermSelection(requestType) {
+            const termSelection = document.getElementById('termSelection');
+            const termPeriod = document.getElementById('termPeriod');
+            
+            if (requestType === 'term') {
+                termSelection.classList.remove('hidden');
+                termPeriod.required = true;
+            } else {
+                termSelection.classList.add('hidden');
+                termPeriod.required = false;
+            }
+        }
+
         document.getElementById('reportRequestForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -254,11 +291,8 @@ $recentRequests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                 const result = await response.json();
 
                 if (response.ok) {
-                    // Show success message
                     alert('Report request submitted successfully!');
-                    // Reset form
                     form.reset();
-                    // Reload page to show updated recent requests
                     window.location.reload();
                 } else {
                     throw new Error(result.message || 'Failed to submit request');

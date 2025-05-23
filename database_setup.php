@@ -1,12 +1,19 @@
 <?php
 require_once 'db.php';
 
+// Drop existing tables if they exist
+$sql_drop_reports = "DROP TABLE IF EXISTS reports";
+$sql_drop_report_requests = "DROP TABLE IF EXISTS report_requests";
+$sql_drop_student_subjects = "DROP TABLE IF EXISTS student_subjects";
+$sql_drop_curriculum = "DROP TABLE IF EXISTS curriculum";
+$sql_drop_subjects = "DROP TABLE IF EXISTS subjects";
+
 // Create users table
 $sql_users = "CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
-    role ENUM('student', 'teacher') NOT NULL,
+    role ENUM('student', 'teacher', 'admin') NOT NULL,
     full_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -23,11 +30,13 @@ $sql_students = "CREATE TABLE IF NOT EXISTS students (
     last_name VARCHAR(50) NOT NULL,
     year_level VARCHAR(20) NOT NULL,
     degree_program VARCHAR(50) NOT NULL,
-    semester ENUM('1st Sem', '2nd Sem') NOT NULL,
+    semester ENUM('First Semester', 'Second Semester') NOT NULL,
+    academic_year VARCHAR(9) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_student_id (student_id),
-    INDEX idx_year_program (year_level, degree_program)
+    INDEX idx_year_program (year_level, degree_program),
+    INDEX idx_academic_term (semester, academic_year)
 )";
 
 // Create teachers table
@@ -69,19 +78,25 @@ $sql_student_subjects = "CREATE TABLE IF NOT EXISTS student_subjects (
     INDEX idx_enrollment_date (enrollment_date)
 )";
 
+// Drop and recreate grades table
+$sql_drop_grades = "DROP TABLE IF EXISTS grades";
+
 // Create grades table
 $sql_grades = "CREATE TABLE IF NOT EXISTS grades (
     id INT AUTO_INCREMENT PRIMARY KEY,
     student_id INT NOT NULL,
     subject_id INT NOT NULL,
+    category ENUM('written', 'performance', 'exams') NOT NULL,
+    grade_type ENUM('assignment', 'activity', 'quiz', 'attendance', 'prelim', 'midterm', 'semi_final', 'final') NOT NULL,
     score DECIMAL(5,2) NOT NULL,
-    grade_type ENUM('quiz', 'assignment', 'exam', 'project', 'final', 'attendance', 'activity_completion') NOT NULL,
     remarks TEXT,
     graded_by INT NOT NULL,
     graded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
     FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
     FOREIGN KEY (graded_by) REFERENCES teachers(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_grade (student_id, subject_id, grade_type),
+    INDEX idx_category (category),
     INDEX idx_grade_type (grade_type),
     INDEX idx_graded_at (graded_at)
 )";
@@ -127,7 +142,8 @@ $sql_reports = "CREATE TABLE IF NOT EXISTS reports (
     id INT AUTO_INCREMENT PRIMARY KEY,
     student_id INT NOT NULL,
     subject_id INT NOT NULL,
-    report_type ENUM('progress', 'midterm', 'final', 'special') NOT NULL,
+    report_type ENUM('term', 'progress', 'comprehensive', 'special') NOT NULL,
+    term_period ENUM('preliminary', 'midterm', 'semi_final', 'final') NULL,
     content TEXT NOT NULL,
     status ENUM('draft', 'pending', 'approved', 'rejected') DEFAULT 'draft',
     submission_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -146,7 +162,8 @@ $sql_report_requests = "CREATE TABLE IF NOT EXISTS report_requests (
     id INT AUTO_INCREMENT PRIMARY KEY,
     student_id INT NOT NULL,
     subject_id INT NOT NULL,
-    request_type ENUM('progress', 'midterm', 'final', 'special') NOT NULL,
+    request_type ENUM('term', 'progress', 'comprehensive', 'special') NOT NULL,
+    term_period ENUM('preliminary', 'midterm', 'semi_final', 'final') NULL,
     request_reason TEXT,
     status ENUM('pending', 'approved', 'rejected', 'completed') DEFAULT 'pending',
     request_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -168,7 +185,7 @@ $sql_curriculum = "CREATE TABLE IF NOT EXISTS curriculum (
     degree_program VARCHAR(50) NOT NULL,
     year_level VARCHAR(20) NOT NULL,
     subject_id INT NOT NULL,
-    semester ENUM('1st Sem', '2nd Sem') NOT NULL,
+    semester ENUM('First Semester', 'Second Semester') NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
     UNIQUE KEY unique_curriculum (degree_program, year_level, subject_id, semester),
@@ -219,64 +236,76 @@ $sql_insert_subjects = "INSERT IGNORE INTO subjects (subject_code, subject_name,
 // Insert default curriculum for all programs
 $sql_insert_curriculum = "INSERT IGNORE INTO curriculum (degree_program, year_level, subject_id, semester) 
 -- BSIT Program
-SELECT 'BSIT', '1st Year', id, '1st Sem' FROM subjects WHERE subject_code IN ('PROG101', 'IM101', 'WSD101', 'UIUX101')
+SELECT 'BSIT', '1st Year', id, 'First Semester' FROM subjects WHERE subject_code IN ('PROG101', 'IM101', 'WSD101', 'UIUX101')
 UNION ALL
-SELECT 'BSIT', '1st Year', id, '2nd Sem' FROM subjects WHERE subject_code IN ('OOP201', 'ADB101', 'NET201', 'MOB201')
+SELECT 'BSIT', '1st Year', id, 'Second Semester' FROM subjects WHERE subject_code IN ('OOP201', 'ADB101', 'NET201', 'MOB201')
 UNION ALL
-SELECT 'BSIT', '2nd Year', id, '1st Sem' FROM subjects WHERE subject_code IN ('DSA201', 'OS201', 'SEC201', 'PM201')
+SELECT 'BSIT', '2nd Year', id, 'First Semester' FROM subjects WHERE subject_code IN ('DSA201', 'OS201', 'SEC201', 'PM201')
 UNION ALL
-SELECT 'BSIT', '2nd Year', id, '2nd Sem' FROM subjects WHERE subject_code IN ('NET201', 'ADB101', 'WSD101', 'UIUX101')
+SELECT 'BSIT', '2nd Year', id, 'Second Semester' FROM subjects WHERE subject_code IN ('NET201', 'ADB101', 'WSD101', 'UIUX101')
 UNION ALL
-SELECT 'BSIT', '3rd Year', id, '1st Sem' FROM subjects WHERE subject_code IN ('SEC201', 'PM201', 'MOB201', 'DSA201')
+SELECT 'BSIT', '3rd Year', id, 'First Semester' FROM subjects WHERE subject_code IN ('SEC201', 'PM201', 'MOB201', 'DSA201')
 UNION ALL
-SELECT 'BSIT', '3rd Year', id, '2nd Sem' FROM subjects WHERE subject_code IN ('OS201', 'IM101', 'PROG101', 'OOP201')
+SELECT 'BSIT', '3rd Year', id, 'Second Semester' FROM subjects WHERE subject_code IN ('OS201', 'IM101', 'PROG101', 'OOP201')
 UNION ALL
-SELECT 'BSIT', '4th Year', id, '1st Sem' FROM subjects WHERE subject_code IN ('PM201', 'SEC201', 'NET201', 'ADB101')
+SELECT 'BSIT', '4th Year', id, 'First Semester' FROM subjects WHERE subject_code IN ('PM201', 'SEC201', 'NET201', 'ADB101')
 UNION ALL
-SELECT 'BSIT', '4th Year', id, '2nd Sem' FROM subjects WHERE subject_code IN ('WSD101', 'UIUX101', 'MOB201', 'DSA201')
+SELECT 'BSIT', '4th Year', id, 'Second Semester' FROM subjects WHERE subject_code IN ('WSD101', 'UIUX101', 'MOB201', 'DSA201')
 
 -- BSCS Program
 UNION ALL
-SELECT 'BSCS', '1st Year', id, '1st Sem' FROM subjects WHERE subject_code IN ('PROG101', 'IM101', 'WSD101', 'UIUX101')
+SELECT 'BSCS', '1st Year', id, 'First Semester' FROM subjects WHERE subject_code IN ('PROG101', 'IM101', 'WSD101', 'UIUX101')
 UNION ALL
-SELECT 'BSCS', '1st Year', id, '2nd Sem' FROM subjects WHERE subject_code IN ('OOP201', 'ADB101', 'NET201', 'MOB201')
+SELECT 'BSCS', '1st Year', id, 'Second Semester' FROM subjects WHERE subject_code IN ('OOP201', 'ADB101', 'NET201', 'MOB201')
 UNION ALL
-SELECT 'BSCS', '2nd Year', id, '1st Sem' FROM subjects WHERE subject_code IN ('DSA201', 'OS201', 'SEC201', 'PM201')
+SELECT 'BSCS', '2nd Year', id, 'First Semester' FROM subjects WHERE subject_code IN ('DSA201', 'OS201', 'SEC201', 'PM201')
 UNION ALL
-SELECT 'BSCS', '2nd Year', id, '2nd Sem' FROM subjects WHERE subject_code IN ('NET201', 'ADB101', 'WSD101', 'UIUX101')
+SELECT 'BSCS', '2nd Year', id, 'Second Semester' FROM subjects WHERE subject_code IN ('NET201', 'ADB101', 'WSD101', 'UIUX101')
 UNION ALL
-SELECT 'BSCS', '3rd Year', id, '1st Sem' FROM subjects WHERE subject_code IN ('SEC201', 'PM201', 'MOB201', 'DSA201')
+SELECT 'BSCS', '3rd Year', id, 'First Semester' FROM subjects WHERE subject_code IN ('SEC201', 'PM201', 'MOB201', 'DSA201')
 UNION ALL
-SELECT 'BSCS', '3rd Year', id, '2nd Sem' FROM subjects WHERE subject_code IN ('OS201', 'IM101', 'PROG101', 'OOP201')
+SELECT 'BSCS', '3rd Year', id, 'Second Semester' FROM subjects WHERE subject_code IN ('OS201', 'IM101', 'PROG101', 'OOP201')
 UNION ALL
-SELECT 'BSCS', '4th Year', id, '1st Sem' FROM subjects WHERE subject_code IN ('PM201', 'SEC201', 'NET201', 'ADB101')
+SELECT 'BSCS', '4th Year', id, 'First Semester' FROM subjects WHERE subject_code IN ('PM201', 'SEC201', 'NET201', 'ADB101')
 UNION ALL
-SELECT 'BSCS', '4th Year', id, '2nd Sem' FROM subjects WHERE subject_code IN ('WSD101', 'UIUX101', 'MOB201', 'DSA201')
+SELECT 'BSCS', '4th Year', id, 'Second Semester' FROM subjects WHERE subject_code IN ('WSD101', 'UIUX101', 'MOB201', 'DSA201')
 
 -- BSCE Program
 UNION ALL
-SELECT 'BSCE', '1st Year', id, '1st Sem' FROM subjects WHERE subject_code IN ('PROG101', 'IM101', 'WSD101', 'UIUX101')
+SELECT 'BSCE', '1st Year', id, 'First Semester' FROM subjects WHERE subject_code IN ('PROG101', 'IM101', 'WSD101', 'UIUX101')
 UNION ALL
-SELECT 'BSCE', '1st Year', id, '2nd Sem' FROM subjects WHERE subject_code IN ('OOP201', 'ADB101', 'NET201', 'MOB201')
+SELECT 'BSCE', '1st Year', id, 'Second Semester' FROM subjects WHERE subject_code IN ('OOP201', 'ADB101', 'NET201', 'MOB201')
 UNION ALL
-SELECT 'BSCE', '2nd Year', id, '1st Sem' FROM subjects WHERE subject_code IN ('DSA201', 'OS201', 'SEC201', 'PM201')
+SELECT 'BSCE', '2nd Year', id, 'First Semester' FROM subjects WHERE subject_code IN ('DSA201', 'OS201', 'SEC201', 'PM201')
 UNION ALL
-SELECT 'BSCE', '2nd Year', id, '2nd Sem' FROM subjects WHERE subject_code IN ('NET201', 'ADB101', 'WSD101', 'UIUX101')
+SELECT 'BSCE', '2nd Year', id, 'Second Semester' FROM subjects WHERE subject_code IN ('NET201', 'ADB101', 'WSD101', 'UIUX101')
 UNION ALL
-SELECT 'BSCE', '3rd Year', id, '1st Sem' FROM subjects WHERE subject_code IN ('SEC201', 'PM201', 'MOB201', 'DSA201')
+SELECT 'BSCE', '3rd Year', id, 'First Semester' FROM subjects WHERE subject_code IN ('SEC201', 'PM201', 'MOB201', 'DSA201')
 UNION ALL
-SELECT 'BSCE', '3rd Year', id, '2nd Sem' FROM subjects WHERE subject_code IN ('OS201', 'IM101', 'PROG101', 'OOP201')
+SELECT 'BSCE', '3rd Year', id, 'Second Semester' FROM subjects WHERE subject_code IN ('OS201', 'IM101', 'PROG101', 'OOP201')
 UNION ALL
-SELECT 'BSCE', '4th Year', id, '1st Sem' FROM subjects WHERE subject_code IN ('PM201', 'SEC201', 'NET201', 'ADB101')
+SELECT 'BSCE', '4th Year', id, 'First Semester' FROM subjects WHERE subject_code IN ('PM201', 'SEC201', 'NET201', 'ADB101')
 UNION ALL
-SELECT 'BSCE', '4th Year', id, '2nd Sem' FROM subjects WHERE subject_code IN ('WSD101', 'UIUX101', 'MOB201', 'DSA201');";
+SELECT 'BSCE', '4th Year', id, 'Second Semester' FROM subjects WHERE subject_code IN ('WSD101', 'UIUX101', 'MOB201', 'DSA201')";
 
 // Insert default teacher accounts
+$default_password = password_hash('password123', PASSWORD_DEFAULT);
 $sql_insert_teachers = "INSERT IGNORE INTO users (username, password, role, full_name, email) VALUES 
-    ('mramos', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'teacher', 'Marvin Ramos', 'marvin.ramos@school.edu'),
-    ('sabina', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'teacher', 'Shane Abina', 'shane.abina@school.edu'),
-    ('jagudo', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'teacher', 'Jovemer Agudo', 'jovemer.agudo@school.edu'),
-    ('jsabalo', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'teacher', 'Jonathan Sabalo', 'jonathan.sabalo@school.edu')";
+    ('mramos', '$default_password', 'teacher', 'Marvin Ramos', 'marvin.ramos@school.edu'),
+    ('sabina', '$default_password', 'teacher', 'Shane Abina', 'shane.abina@school.edu'),
+    ('jagudo', '$default_password', 'teacher', 'Jovemer Agudo', 'jovemer.agudo@school.edu'),
+    ('jsabalo', '$default_password', 'teacher', 'Jonathan Sabalo', 'jonathan.sabalo@school.edu')";
+
+// Insert admin account
+$admin_password = password_hash('admin123', PASSWORD_DEFAULT);
+$sql_insert_admin = "INSERT IGNORE INTO users (username, password, role, full_name, email) VALUES 
+    ('admin', '$admin_password', 'admin', 'System Administrator', 'admin@school.edu')";
+
+// Insert admin record in teachers table
+$sql_insert_admin_record = "INSERT IGNORE INTO teachers (user_id, teacher_id, department) 
+SELECT id, 'ADMIN-001', 'System Administration' 
+FROM users 
+WHERE username = 'admin'";
 
 // Insert teacher records
 $sql_insert_teacher_records = "INSERT IGNORE INTO teachers (user_id, teacher_id, department) 
@@ -291,9 +320,59 @@ SELECT id,
 FROM users 
 WHERE role = 'teacher'";
 
+// Add term_period column to existing tables if it doesn't exist
+$sql_alter_reports = "ALTER TABLE reports 
+    ADD COLUMN IF NOT EXISTS term_period ENUM('preliminary', 'midterm', 'semi_final', 'final') NULL AFTER report_type,
+    MODIFY COLUMN report_type ENUM('term', 'progress', 'comprehensive', 'special') NOT NULL";
+
+$sql_alter_report_requests = "ALTER TABLE report_requests 
+    ADD COLUMN IF NOT EXISTS term_period ENUM('preliminary', 'midterm', 'semi_final', 'final') NULL AFTER request_type,
+    MODIFY COLUMN request_type ENUM('term', 'progress', 'comprehensive', 'special') NOT NULL";
+
+// Insert sample grades for testing
+$sql_insert_sample_grades = "INSERT INTO grades (student_id, subject_id, category, grade_type, score, graded_by)
+SELECT 
+    st.id as student_id,
+    s.id as subject_id,
+    CASE 
+        WHEN g.grade_type IN ('assignment', 'activity', 'quiz') THEN 'written'
+        WHEN g.grade_type = 'attendance' THEN 'performance'
+        ELSE 'exams'
+    END as category,
+    g.grade_type,
+    FLOOR(75 + RAND() * 25) as score,
+    t.id as graded_by
+FROM student_subjects ss
+CROSS JOIN (
+    SELECT 'assignment' as grade_type UNION ALL
+    SELECT 'activity' UNION ALL
+    SELECT 'quiz' UNION ALL
+    SELECT 'attendance' UNION ALL
+    SELECT 'prelim' UNION ALL
+    SELECT 'midterm' UNION ALL
+    SELECT 'semi_final' UNION ALL
+    SELECT 'final'
+) g
+JOIN students st ON ss.student_id = st.id
+JOIN subjects s ON ss.subject_id = s.id
+JOIN teachers t ON s.teacher_id = t.id
+WHERE ss.status = 'active'
+ON DUPLICATE KEY UPDATE score = VALUES(score)";
+
 // Execute the SQL statements
 try {
-    // Create tables
+    // Disable foreign key checks
+    $conn->query("SET FOREIGN_KEY_CHECKS = 0");
+    
+    // Drop tables in reverse dependency order
+    $conn->query($sql_drop_reports);
+    $conn->query($sql_drop_report_requests);
+    $conn->query($sql_drop_student_subjects);
+    $conn->query($sql_drop_curriculum);
+    $conn->query($sql_drop_subjects);
+    $conn->query($sql_drop_grades);
+    
+    // Create tables in dependency order
     $conn->query($sql_users);
     $conn->query($sql_students);
     $conn->query($sql_teachers);
@@ -308,15 +387,13 @@ try {
     $conn->query($sql_remember_tokens);
     $conn->query($sql_password_resets);
     
-    // Insert default subjects
-    $conn->query($sql_insert_subjects);
-    
-    // Insert curriculum data
-    $conn->query($sql_insert_curriculum);
-    
-    // Insert teacher accounts and records
+    // Insert default data
     $conn->query($sql_insert_teachers);
+    $conn->query($sql_insert_admin);
+    $conn->query($sql_insert_admin_record);
     $conn->query($sql_insert_teacher_records);
+    $conn->query($sql_insert_subjects);
+    $conn->query($sql_insert_curriculum);
     
     // Update teacher assignments
     $sql_update_teachers = "UPDATE teachers t 
@@ -332,8 +409,25 @@ try {
     
     $conn->query($sql_update_teachers);
     
+    // Execute the ALTER TABLE statements
+    if ($conn->query($sql_alter_reports) === FALSE) {
+        die("Error altering reports table: " . $conn->error);
+    }
+
+    if ($conn->query($sql_alter_report_requests) === FALSE) {
+        die("Error altering report_requests table: " . $conn->error);
+    }
+    
+    // Insert sample grades
+    $conn->query($sql_insert_sample_grades);
+    
+    // Re-enable foreign key checks
+    $conn->query("SET FOREIGN_KEY_CHECKS = 1");
+    
     echo "Database tables created and updated successfully!";
 } catch (Exception $e) {
+    // Re-enable foreign key checks even if there's an error
+    $conn->query("SET FOREIGN_KEY_CHECKS = 1");
     echo "Error creating/updating tables: " . $e->getMessage();
 }
 

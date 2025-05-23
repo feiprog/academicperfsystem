@@ -11,12 +11,25 @@ $stmt = $conn->prepare("
         s.subject_name,
         tu.full_name as teacher_name,
         tu.email as teacher_email,
-        COALESCE(AVG(g.score), 0) as average_grade,
-        COUNT(DISTINCT g.id) as total_grades,
+        -- Written Works (30%)
+        MAX(CASE WHEN g.grade_type = 'written_assignment' THEN g.score END) as assignment_score,
+        MAX(CASE WHEN g.grade_type = 'written_activity' THEN g.score END) as activity_score,
+        MAX(CASE WHEN g.grade_type = 'written_quiz' THEN g.score END) as quiz_score,
+        -- Performance (20%)
+        MAX(CASE WHEN g.grade_type = 'performance_attendance' THEN g.score END) as attendance_score,
+        -- Examinations (50%)
+        MAX(CASE WHEN g.grade_type = 'exam_prelim' THEN g.score END) as prelim_score,
+        MAX(CASE WHEN g.grade_type = 'exam_midterm' THEN g.score END) as midterm_score,
+        MAX(CASE WHEN g.grade_type = 'exam_semi_final' THEN g.score END) as semi_final_score,
+        MAX(CASE WHEN g.grade_type = 'exam_final' THEN g.score END) as final_score,
+        -- Attendance tracking
         COUNT(DISTINCT CASE WHEN a.status = 'present' THEN a.id END) as attendance_present,
         COUNT(DISTINCT a.id) as total_attendance,
+        -- Activity tracking
         COUNT(DISTINCT act.id) as total_activities,
-        COUNT(DISTINCT CASE WHEN act.status = 'completed' THEN act.id END) as completed_activities
+        COUNT(DISTINCT CASE WHEN act.status = 'completed' THEN act.id END) as completed_activities,
+        -- Total grades
+        COUNT(DISTINCT g.id) as total_grades
     FROM subjects s
     JOIN student_subjects ss ON s.id = ss.subject_id
     JOIN students st ON ss.student_id = st.id
@@ -68,8 +81,23 @@ $completedActivities = 0;
 $subjectsWithGrades = 0;
 
 foreach ($subjects as $subject) {
+    // Calculate final grade for each subject
+    $writtenWorks = (
+        ($subject['assignment_score'] * 0.10) +
+        ($subject['activity_score'] * 0.10) +
+        ($subject['quiz_score'] * 0.10)
+    );
+    $performance = $subject['attendance_score'] * 0.20;
+    $examinations = (
+        ($subject['prelim_score'] * 0.10) +
+        ($subject['midterm_score'] * 0.15) +
+        ($subject['semi_final_score'] * 0.10) +
+        ($subject['final_score'] * 0.15)
+    );
+    $finalGrade = $writtenWorks + $performance + $examinations;
+
     if ($subject['total_grades'] > 0) {
-        $totalGrade += $subject['average_grade'];
+        $totalGrade += $finalGrade;
         $subjectsWithGrades++;
     }
     $totalAttendance += $subject['attendance_present'];
@@ -198,14 +226,27 @@ $activityCompletionRate = $totalActivities > 0 ? round(($completedActivities / $
 
         <!-- Performance Chart -->
         <div class="bg-white rounded-2xl shadow-sm mb-8 overflow-hidden">
-            <div class="p-6 border-b border-gray-100 bg-gradient-to-r from-sky-50 to-white">
+            <div class="p-6 border-b border-gray-100 bg-gradient-to-r from-sky-50 to-white flex justify-between items-center">
                 <h2 class="text-xl font-semibold text-gray-800 flex items-center">
                     <span class="mr-2 text-sky-500">📈</span>
-                    Performance Chart
+                    Performance Overview
                 </h2>
+                <div class="flex space-x-2">
+                    <button onclick="switchChart('term')" id="termBtn" class="px-3 py-1.5 text-sm font-medium text-white bg-sky-600 rounded-lg hover:bg-sky-700 transition-colors">
+                        Term Progress
+                    </button>
+                    <button onclick="switchChart('component')" id="componentBtn" class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                        Component Analysis
+                    </button>
+                </div>
             </div>
             <div class="p-6">
-                <canvas id="performanceChart" height="100"></canvas>
+                <div id="termChart" class="h-[400px]">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+                <div id="componentChart" class="h-[400px] hidden">
+                    <canvas id="componentAnalysisChart"></canvas>
+                </div>
             </div>
         </div>
 
@@ -222,44 +263,68 @@ $activityCompletionRate = $totalActivities > 0 ? round(($completedActivities / $
                     <thead>
                         <tr class="bg-gray-50">
                             <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Subject</th>
-                            <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Instructor</th>
-                            <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Grade</th>
-                            <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Attendance</th>
-                            <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Activities</th>
+                            <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Written Works (30%)</th>
+                            <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Performance (20%)</th>
+                            <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Examinations (50%)</th>
+                            <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Final Grade</th>
                             <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Action</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         <?php foreach ($subjects as $subject): 
-                            $attendanceRate = $subject['total_attendance'] > 0 
-                                ? round(($subject['attendance_present'] / $subject['total_attendance']) * 100, 2) 
-                                : 0;
-                            $activityRate = $subject['total_activities'] > 0 
-                                ? round(($subject['completed_activities'] / $subject['total_activities']) * 100, 2) 
-                                : 0;
+                            // Calculate Written Works (30%)
+                            $writtenWorks = (
+                                ($subject['assignment_score'] * 0.10) +
+                                ($subject['activity_score'] * 0.10) +
+                                ($subject['quiz_score'] * 0.10)
+                            );
+
+                            // Calculate Performance (20%)
+                            $performance = $subject['attendance_score'] * 0.20;
+
+                            // Calculate Examinations (50%)
+                            $examinations = (
+                                ($subject['prelim_score'] * 0.10) +
+                                ($subject['midterm_score'] * 0.15) +
+                                ($subject['semi_final_score'] * 0.10) +
+                                ($subject['final_score'] * 0.15)
+                            );
+
+                            // Calculate Final Grade
+                            $finalGrade = $writtenWorks + $performance + $examinations;
                         ?>
                         <tr class="hover:bg-sky-50/50 transition-colors">
                             <td class="px-6 py-4 text-sm text-gray-900">
                                 <?php echo htmlspecialchars($subject['subject_name']); ?>
                                 <div class="text-xs text-gray-500"><?php echo htmlspecialchars($subject['subject_code']); ?></div>
-                            </td>
-                            <td class="px-6 py-4 text-sm text-gray-600">
-                                <?php echo htmlspecialchars($subject['teacher_name']); ?>
-                                <div class="text-xs text-gray-500"><?php echo htmlspecialchars($subject['teacher_email']); ?></div>
+                                <div class="text-xs text-gray-500"><?php echo htmlspecialchars($subject['teacher_name']); ?></div>
                             </td>
                             <td class="px-6 py-4">
-                                <span class="px-3 py-1.5 text-sm rounded-lg <?php echo getGradeColorClass($subject['average_grade']); ?>">
-                                    <?php echo round($subject['average_grade']); ?>%
-                                </span>
+                                <div class="space-y-1">
+                                    <div class="text-xs text-gray-500">Assignments: <?php echo round($subject['assignment_score']); ?>%</div>
+                                    <div class="text-xs text-gray-500">Activities: <?php echo round($subject['activity_score']); ?>%</div>
+                                    <div class="text-xs text-gray-500">Quizzes: <?php echo round($subject['quiz_score']); ?>%</div>
+                                    <div class="font-medium text-sm mt-1">Total: <?php echo round($writtenWorks, 1); ?>%</div>
+                                </div>
                             </td>
                             <td class="px-6 py-4">
-                                <span class="px-3 py-1.5 text-sm rounded-lg <?php echo getGradeColorClass($attendanceRate); ?>">
-                                    <?php echo $attendanceRate; ?>%
-                                </span>
+                                <div class="space-y-1">
+                                    <div class="text-xs text-gray-500">Attendance: <?php echo round($subject['attendance_score']); ?>%</div>
+                                    <div class="font-medium text-sm mt-1">Total: <?php echo round($performance, 1); ?>%</div>
+                                </div>
                             </td>
                             <td class="px-6 py-4">
-                                <span class="px-3 py-1.5 text-sm rounded-lg <?php echo getGradeColorClass($activityRate); ?>">
-                                    <?php echo $activityRate; ?>%
+                                <div class="space-y-1">
+                                    <div class="text-xs text-gray-500">Prelim: <?php echo round($subject['prelim_score']); ?>%</div>
+                                    <div class="text-xs text-gray-500">Midterm: <?php echo round($subject['midterm_score']); ?>%</div>
+                                    <div class="text-xs text-gray-500">Semi-Final: <?php echo round($subject['semi_final_score']); ?>%</div>
+                                    <div class="text-xs text-gray-500">Final: <?php echo round($subject['final_score']); ?>%</div>
+                                    <div class="font-medium text-sm mt-1">Total: <?php echo round($examinations, 1); ?>%</div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="px-3 py-1.5 text-sm rounded-lg <?php echo getGradeColorClass($finalGrade); ?>">
+                                    <?php echo round($finalGrade, 1); ?>%
                                 </span>
                             </td>
                             <td class="px-6 py-4">
@@ -324,20 +389,51 @@ $activityCompletionRate = $totalActivities > 0 ? round(($completedActivities / $
         // Initialize performance chart
         const ctx = document.getElementById('performanceChart').getContext('2d');
         const subjects = <?php echo json_encode(array_column($subjects, 'subject_name')); ?>;
-        const grades = <?php echo json_encode(array_map(function($s) { return round($s['average_grade']); }, $subjects)); ?>;
-        const attendance = <?php echo json_encode(array_map(function($s) { 
-            return $s['total_attendance'] > 0 ? round(($s['attendance_present'] / $s['total_attendance']) * 100, 2) : 0; 
+        const subjectIds = <?php echo json_encode(array_column($subjects, 'subject_id')); ?>;
+        const subjectCodes = <?php echo json_encode(array_column($subjects, 'subject_code')); ?>;
+        
+        // Calculate grades using the teacher's grading system
+        const grades = <?php echo json_encode(array_map(function($s) {
+            // Written Works (30%)
+            $writtenWorks = 0;
+            if ($s['assignment_score'] !== null) $writtenWorks += $s['assignment_score'] * 0.10; // 10%
+            if ($s['activity_score'] !== null) $writtenWorks += $s['activity_score'] * 0.10;    // 10%
+            if ($s['quiz_score'] !== null) $writtenWorks += $s['quiz_score'] * 0.10;           // 10%
+            
+            // Performance (20%)
+            $performance = 0;
+            if ($s['attendance_score'] !== null) $performance = $s['attendance_score'] * 0.20;
+            
+            // Examinations (50%)
+            $examinations = 0;
+            if ($s['prelim_score'] !== null) $examinations += $s['prelim_score'] * 0.10;       // 10%
+            if ($s['midterm_score'] !== null) $examinations += $s['midterm_score'] * 0.15;     // 15%
+            if ($s['semi_final_score'] !== null) $examinations += $s['semi_final_score'] * 0.10; // 10%
+            if ($s['final_score'] !== null) $examinations += $s['final_score'] * 0.15;         // 15%
+            
+            // Return null if no grades are recorded yet
+            $hasAnyGrade = $s['assignment_score'] !== null || $s['activity_score'] !== null || 
+                          $s['quiz_score'] !== null || $s['attendance_score'] !== null ||
+                          $s['prelim_score'] !== null || $s['midterm_score'] !== null ||
+                          $s['semi_final_score'] !== null || $s['final_score'] !== null;
+            
+            return $hasAnyGrade ? round($writtenWorks + $performance + $examinations, 1) : null;
         }, $subjects)); ?>;
+        
+        const attendance = <?php echo json_encode(array_map(function($s) { 
+            return $s['total_attendance'] > 0 ? round(($s['attendance_present'] / $s['total_attendance']) * 100, 2) : null; 
+        }, $subjects)); ?>;
+        
         const activities = <?php echo json_encode(array_map(function($s) { 
-            return $s['total_activities'] > 0 ? round(($s['completed_activities'] / $s['total_activities']) * 100, 2) : 0; 
+            return $s['total_activities'] > 0 ? round(($s['completed_activities'] / $s['total_activities']) * 100, 2) : null; 
         }, $subjects)); ?>;
 
         new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: subjects,
+                labels: subjectCodes,
                 datasets: [{
-                    label: 'Grades',
+                    label: 'Overall Grade',
                     data: grades,
                     backgroundColor: 'rgba(14, 165, 233, 0.5)',
                     borderColor: 'rgb(14, 165, 233)',
@@ -371,10 +467,86 @@ $activityCompletionRate = $totalActivities > 0 ? round(($completedActivities / $
                 plugins: {
                     legend: {
                         position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                const index = context[0].dataIndex;
+                                return `${subjectCodes[index]}\n${subjects[index]}`;
+                            },
+                            label: function(context) {
+                                const value = context.raw;
+                                const datasetLabel = context.dataset.label;
+                                if (value === null) {
+                                    return `${datasetLabel}: No grades yet`;
+                                }
+                                return `${datasetLabel}: ${value}%`;
+                            },
+                            afterLabel: function(context) {
+                                const index = context.dataIndex;
+                                if (context.datasetIndex === 0) { // Only for grades dataset
+                                    const subject = window.gradeDetails?.[index];
+                                    if (subject) {
+                                        if (subject.hasGrades) {
+                                            return [
+                                                '',
+                                                `Written Works (30%): ${subject.writtenWorks}%`,
+                                                `Performance (20%): ${subject.performance}%`,
+                                                `Examinations (50%): ${subject.examinations}%`
+                                            ];
+                                        } else {
+                                            return ['', 'No grades recorded yet'];
+                                        }
+                                    }
+                                }
+                                return null;
+                            }
+                        }
                     }
                 }
             }
         });
+
+        // Store grade details for tooltip
+        window.gradeDetails = <?php echo json_encode(array_map(function($s) {
+            $hasGrades = $s['assignment_score'] !== null || $s['activity_score'] !== null || 
+                        $s['quiz_score'] !== null || $s['attendance_score'] !== null ||
+                        $s['prelim_score'] !== null || $s['midterm_score'] !== null ||
+                        $s['semi_final_score'] !== null || $s['final_score'] !== null;
+
+            if (!$hasGrades) {
+                return [
+                    'hasGrades' => false,
+                    'writtenWorks' => 0,
+                    'performance' => 0,
+                    'examinations' => 0
+                ];
+            }
+
+            $writtenWorks = round(
+                ($s['assignment_score'] ?? 0) * 0.10 +
+                ($s['activity_score'] ?? 0) * 0.10 +
+                ($s['quiz_score'] ?? 0) * 0.10,
+                1
+            );
+            
+            $performance = round(($s['attendance_score'] ?? 0) * 0.20, 1);
+            
+            $examinations = round(
+                ($s['prelim_score'] ?? 0) * 0.10 +
+                ($s['midterm_score'] ?? 0) * 0.15 +
+                ($s['semi_final_score'] ?? 0) * 0.10 +
+                ($s['final_score'] ?? 0) * 0.15,
+                1
+            );
+            
+            return [
+                'hasGrades' => true,
+                'writtenWorks' => $writtenWorks,
+                'performance' => $performance,
+                'examinations' => $examinations
+            ];
+        }, $subjects)); ?>;
     </script>
 
     <?php

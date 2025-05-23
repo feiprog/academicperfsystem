@@ -3,27 +3,54 @@ session_start();
 require_once 'db.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    error_log("Login attempt started");
+    
     $username = $conn->real_escape_string($_POST['username']);
     $password = $_POST['password'];
     $remember = isset($_POST['remember']) ? true : false;
+    
+    error_log("Login attempt - Username: " . $username);
+    error_log("Login attempt - Raw password length: " . strlen($password));
 
-    $sql = "SELECT id, username, password, role, full_name FROM users WHERE username = ?";
+    // Get user data including full_name
+    $sql = "SELECT id, username, password, role, full_name, email FROM users WHERE username = ?";
     $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        error_log("Prepare failed: " . $conn->error);
+        die("Prepare failed: " . $conn->error);
+    }
+    
     $stmt->bind_param("s", $username);
-    $stmt->execute();
+    if (!$stmt->execute()) {
+        error_log("Execute failed: " . $stmt->error);
+        die("Execute failed: " . $stmt->error);
+    }
+    
     $result = $stmt->get_result();
+    error_log("Query result rows: " . $result->num_rows);
 
     if ($result->num_rows == 1) {
         $user = $result->fetch_assoc();
+        error_log("Found user data: " . print_r($user, true));
+        
+        error_log("Stored password hash: " . $user['password']);
+        error_log("Attempting password verification...");
+        
         if (password_verify($password, $user['password'])) {
+            error_log("Password verified successfully");
+            
+            // Set basic session data
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['role'] = $user['role'];
             $_SESSION['full_name'] = $user['full_name'];
+            $_SESSION['email'] = $user['email'];
+            
+            error_log("Session data set: " . print_r($_SESSION, true));
 
             // Set remember me cookie if checked
             if ($remember) {
-                $token = bin2hex(random_bytes(32)); // Generate secure random token
+                $token = bin2hex(random_bytes(32));
                 $expires = time() + (30 * 24 * 60 * 60); // 30 days
                 
                 // Store token in database
@@ -36,22 +63,67 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
 
             // Redirect based on role
-            if ($user['role'] == 'student') {
-                header("Location: student_dashboard.php");
-            } else {
-                header("Location: teacher_dashboard.php");
+            switch ($user['role']) {
+                case 'student':
+                    // Get additional student data
+                    $stmt = $conn->prepare("
+                        SELECT student_id, first_name, last_name, year_level, degree_program, semester, academic_year
+                        FROM students 
+                        WHERE user_id = ?
+                    ");
+                    $stmt->bind_param("i", $user['id']);
+                    $stmt->execute();
+                    $student_data = $stmt->get_result()->fetch_assoc();
+                    
+                    if ($student_data) {
+                        $_SESSION['student_data'] = $student_data;
+                        error_log("Student data set: " . print_r($student_data, true));
+                    } else {
+                        error_log("No student data found for user_id: " . $user['id']);
+                    }
+                    header("Location: student_dashboard.php");
+                    break;
+                    
+                case 'teacher':
+                    // Get additional teacher data
+                    $stmt = $conn->prepare("
+                        SELECT teacher_id, department
+                        FROM teachers 
+                        WHERE user_id = ?
+                    ");
+                    $stmt->bind_param("i", $user['id']);
+                    $stmt->execute();
+                    $teacher_data = $stmt->get_result()->fetch_assoc();
+                    
+                    if ($teacher_data) {
+                        $_SESSION['teacher_data'] = $teacher_data;
+                        error_log("Teacher data set: " . print_r($teacher_data, true));
+                    } else {
+                        error_log("No teacher data found for user_id: " . $user['id']);
+                    }
+                    header("Location: teacher_dashboard.php");
+                    break;
+                    
+                default:
+                    header("Location: admin_dashboard.php");
             }
             exit();
+        } else {
+            error_log("Password verification failed");
+            error_log("Debug - password_verify result: " . (password_verify($password, $user['password']) ? 'true' : 'false'));
+            $error = "Invalid username or password";
         }
+    } else {
+        error_log("No user found with username: " . $username);
+        $error = "Invalid username or password";
     }
-    $error = "Invalid username or password";
 }
 
 // Check for remember me cookie
 if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_token'])) {
     $token = $_COOKIE['remember_token'];
     $stmt = $conn->prepare("
-        SELECT u.id, u.username, u.role, u.full_name 
+        SELECT u.id, u.username, u.role, u.full_name, u.email
         FROM users u 
         JOIN remember_tokens rt ON u.id = rt.user_id 
         WHERE rt.token = ? AND rt.expires_at > NOW()
@@ -66,12 +138,44 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_token'])) {
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];
         $_SESSION['full_name'] = $user['full_name'];
+        $_SESSION['email'] = $user['email'];
         
-        // Redirect based on role
-        if ($user['role'] === 'student') {
-            header('Location: student_dashboard.php');
-        } else {
-            header('Location: teacher_dashboard.php');
+        // Get role-specific data
+        switch ($user['role']) {
+            case 'student':
+                $stmt = $conn->prepare("
+                    SELECT student_id, first_name, last_name, year_level, degree_program, semester, academic_year
+                    FROM students 
+                    WHERE user_id = ?
+                ");
+                $stmt->bind_param("i", $user['id']);
+                $stmt->execute();
+                $student_data = $stmt->get_result()->fetch_assoc();
+                
+                if ($student_data) {
+                    $_SESSION['student_data'] = $student_data;
+                }
+                header("Location: student_dashboard.php");
+                break;
+                
+            case 'teacher':
+                $stmt = $conn->prepare("
+                    SELECT teacher_id, department
+                    FROM teachers 
+                    WHERE user_id = ?
+                ");
+                $stmt->bind_param("i", $user['id']);
+                $stmt->execute();
+                $teacher_data = $stmt->get_result()->fetch_assoc();
+                
+                if ($teacher_data) {
+                    $_SESSION['teacher_data'] = $teacher_data;
+                }
+                header("Location: teacher_dashboard.php");
+                break;
+                
+            default:
+                header("Location: admin_dashboard.php");
         }
         exit();
     }

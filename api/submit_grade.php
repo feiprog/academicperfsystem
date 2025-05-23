@@ -1,80 +1,82 @@
 <?php
 require_once '../auth_check.php';
+require_once '../includes/GradeService.php';
 requireTeacher();
+
 header('Content-Type: application/json');
 
 // Get POST data
 $data = json_decode(file_get_contents('php://input'), true);
 
-// Validate required fields
-if (!isset($data['student_id']) || !isset($data['subject_id']) || !isset($data['grade'])) {
-    http_response_code(400);
-    echo json_encode(['error' => 'Missing required fields']);
-    exit;
-}
-
-// Validate grade value
-$grade = floatval($data['grade']);
-if ($grade < 0 || $grade > 100) {
-    http_response_code(400);
-    echo json_encode(['error' => 'Grade must be between 0 and 100']);
-    exit;
-}
-
-// Get teacher ID
-$teacher_id = $_SESSION['user_id'];
-
-// Insert grade
-$sql = "INSERT INTO grades (
-            student_id,
-            subject_id,
-            teacher_id,
-            grade,
-            comments,
-            created_at
-        ) VALUES (?, ?, ?, ?, ?, NOW())";
-
-$stmt = $conn->prepare($sql);
-$stmt->bind_param(
-    "iiids",
-    $data['student_id'],
-    $data['subject_id'],
-    $teacher_id,
-    $grade,
-    $data['comments']
-);
-
-if ($stmt->execute()) {
-    // Get the inserted grade with student and subject details
-    $grade_id = $conn->insert_id;
-    $sql = "SELECT 
-                g.id,
-                g.grade,
-                g.comments,
-                g.created_at,
-                s.student_id as student_number,
-                u.full_name as student_name,
-                sub.subject_code,
-                sub.subject_name
-            FROM grades g
-            JOIN students s ON g.student_id = s.id
-            JOIN users u ON s.user_id = u.id
-            JOIN subjects sub ON g.subject_id = sub.id
-            WHERE g.id = ?";
+try {
+    // Initialize grade service
+    $gradeService = new GradeService($conn, getCurrentUser());
     
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $grade_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $grade_data = $result->fetch_assoc();
+    // Prepare grade data
+    $gradeData = [
+        'student_id' => $data['student_id'] ?? null,
+        'subject_id' => $data['subject_id'] ?? null,
+        'category' => $data['category'] ?? null,
+        'grade_type' => $data['grade_type'] ?? null,
+        'score' => $data['score'] ?? null,
+        'academic_year' => $data['academic_year'] ?? getCurrentAcademicYear(),
+        'term' => $data['term'] ?? getCurrentTerm(),
+        'remarks' => $data['remarks'] ?? ''
+    ];
     
-    echo json_encode([
-        'success' => true,
-        'message' => 'Grade submitted successfully',
-        'grade' => $grade_data
-    ]);
-} else {
+    // Submit grade
+    $result = $gradeService->submitGrade($gradeData);
+    
+    if ($result['success']) {
+        http_response_code(200);
+        echo json_encode($result);
+    } else {
+        http_response_code(400);
+        echo json_encode($result);
+    }
+    
+} catch (Exception $e) {
     http_response_code(500);
-    echo json_encode(['error' => 'Failed to submit grade']);
+    echo json_encode([
+        'success' => false,
+        'error' => $e->getMessage()
+    ]);
+}
+
+/**
+ * Helper function to get current academic year
+ */
+function getCurrentAcademicYear() {
+    $year = date('Y');
+    $month = date('n');
+    
+    // If we're in the latter part of the year (August onwards),
+    // the academic year is current year to next year
+    if ($month >= 8) {
+        return $year . '-' . ($year + 1);
+    }
+    
+    // Otherwise, it's previous year to current year
+    return ($year - 1) . '-' . $year;
+}
+
+/**
+ * Helper function to get current term
+ */
+function getCurrentTerm() {
+    $month = date('n');
+    
+    // First semester: August to December
+    if ($month >= 8 && $month <= 12) {
+        return 'First Semester';
+    }
+    
+    // Second semester: January to May
+    if ($month >= 1 && $month <= 5) {
+        return 'Second Semester';
+    }
+    
+    // Summer term: June to July
+    return 'Summer';
 }
 ?> 
